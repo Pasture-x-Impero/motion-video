@@ -14,7 +14,7 @@ export const ImperoMorph: React.FC<{ progress: number; labelOpacity: number; wid
   width,
 }) => {
   // Colours switch over the middle of the motion so the blend never lingers in muddy midtones.
-  const colorMix = interpolate(p, [0.3, 0.65], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const colorMix = interpolate(p, [0.46, 0.54], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const outerColor = interpolateColors(colorMix, [0, 1], [COLORS.copper, COLORS.turquoise]);
   const dotColor = interpolateColors(colorMix, [0, 1], [COLORS.teal, COLORS.turquoise]);
   const outerGap = 12 * p;
