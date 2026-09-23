@@ -8,7 +8,9 @@
     "render": "remotion render ImperoSocial out/impero-social.mp4",
     "render:wide": "remotion render ImperoWide out/impero-wide.mp4",
     "still": "remotion still ImperoSocial out/poster.png --frame=45",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "render:site": "remotion render ImperoWebsiteSocial out/impero-website-social.mp4",
+    "render:site:wide": "remotion render ImperoWebsiteWide out/impero-website-wide.mp4"
   },
   "dependencies": {
     "@remotion/cli": "^4.0.527",

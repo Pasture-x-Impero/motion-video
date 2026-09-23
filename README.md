@@ -13,12 +13,22 @@ component, so text, colours and timing are edited in source and re rendered.
 5. **En del av Serit‑gruppen** mint box with counting numbers.
 6. **Klar for å ta neste steg?** copper box with contact details.
 
-Two compositions share the same scenes:
+## Website video
 
-| Composition    | Size        | Use                              |
-|----------------|-------------|----------------------------------|
-| `ImperoSocial` | 1080 × 1350 | LinkedIn, Facebook, Instagram    |
-| `ImperoWide`   | 1920 × 1080 | Website, YouTube, presentations  |
+A second video, `ImperoWebsite*`, walks through impero.no section by section: the hero
+with the site's ring animation (Utvikling, Drift, Utstyr morphing into the Impero icon),
+the Serit box, "Hvorfor velge oss", the service cards, the rising service graph, the
+coral contact form and a footer style outro. Copy and colours are taken from the site's
+source (Lovable project "impero.no"). Its scenes live in `src/website/`.
+
+Four compositions share the same building blocks:
+
+| Composition           | Size        | Use                              |
+|-----------------------|-------------|----------------------------------|
+| `ImperoSocial`        | 1080 × 1350 | LinkedIn, Facebook, Instagram    |
+| `ImperoWide`          | 1920 × 1080 | Website, YouTube, presentations  |
+| `ImperoWebsiteSocial` | 1080 × 1350 | Website walkthrough, portrait    |
+| `ImperoWebsiteWide`   | 1920 × 1080 | Website walkthrough, wide        |
 
 ## Getting started
 
@@ -27,6 +37,8 @@ npm install
 npm run dev          # opens Remotion Studio for live preview
 npm run render       # renders out/impero-social.mp4
 npm run render:wide  # renders out/impero-wide.mp4
+npm run render:site       # renders out/impero-website-social.mp4
+npm run render:site:wide  # renders out/impero-website-wide.mp4
 npm run still        # renders a poster frame to out/poster.png
 ```
 
@@ -35,7 +47,8 @@ existing browser instead, set `REMOTION_BROWSER_EXECUTABLE` to its path.
 
 ## Editing
 
-- All copy lives in `src/content.ts`. Change the text there and re render.
+- All copy lives in `src/content.ts` (brand video) and `src/website/content.ts`
+  (website video). Change the text there and re render.
 - Colours, scene lengths and the transition length live in `src/brand.ts`.
 - Each scene is a file under `src/scenes/`. Shared building blocks (logos,
   headings, list rows, fade in helpers) are in `src/components/index.tsx`.

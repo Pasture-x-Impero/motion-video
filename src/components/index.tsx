@@ -30,12 +30,20 @@ export const useLayout = () => {
 
 /** Full frame background with padding and the brand font applied. */
 export const Stage: React.FC<
-  PropsWithChildren<{ background?: string; style?: CSSProperties; darkLogos?: boolean }>
-> = ({ children, background = COLORS.white, style, darkLogos = false }) => {
+  PropsWithChildren<{
+    background?: string;
+    style?: CSSProperties;
+    darkLogos?: boolean;
+    logos?: boolean;
+    /** Rendered relative to the full frame, outside the padded content box. */
+    overlay?: React.ReactNode;
+  }>
+> = ({ children, background = COLORS.white, style, darkLogos = false, logos = true, overlay }) => {
   const { pad, contentTop, maxContentWidth } = useLayout();
   return (
     <AbsoluteFill style={{ backgroundColor: background, fontFamily }}>
-      <Logos dark={darkLogos} />
+      {logos ? <Logos dark={darkLogos} /> : null}
+      {overlay}
       <div
         style={{
           position: "absolute",
