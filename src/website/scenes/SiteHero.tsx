@@ -41,6 +41,50 @@ const SiteHeader: React.FC = () => {
   );
 };
 
+/** Title, intro sentence and contact button from the hero on impero.no. */
+export const HeroCopy: React.FC<{ delay?: number; showButton?: boolean }> = ({ delay = 0, showButton = true }) => {
+  const { isWide } = useLayout();
+  return (
+    <div style={{ maxWidth: isWide ? 640 : undefined }}>
+      <FadeUp delay={delay + 10} distance={40}>
+        <h1
+          style={{
+            fontFamily,
+            fontWeight: 900,
+            fontSize: isWide ? 84 : 92,
+            letterSpacing: -2.5,
+            lineHeight: 1.05,
+            color: COLORS.teal,
+            margin: 0,
+            whiteSpace: "nowrap",
+          }}
+        >
+          {SITE_HERO.title}
+        </h1>
+      </FadeUp>
+      <FadeUp delay={delay + 24} distance={30} style={{ marginTop: 22 }}>
+        <p
+          style={{
+            fontFamily,
+            fontWeight: 400,
+            fontSize: isWide ? 30 : 33,
+            lineHeight: 1.35,
+            color: SITE.foreground80,
+            margin: 0,
+          }}
+        >
+          <RichText text={SITE_HERO.text} />
+        </p>
+      </FadeUp>
+      {showButton ? (
+        <FadeUp delay={delay + 40} distance={24} style={{ marginTop: 32 }}>
+          <TealButton variant="coral">{SITE_HERO.button}</TealButton>
+        </FadeUp>
+      ) : null}
+    </div>
+  );
+};
+
 export const SiteHero: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -60,43 +104,7 @@ export const SiteHero: React.FC = () => {
 
   const graphicWidth = isWide ? 720 : Math.min(width - 200, 700);
 
-  const textBlock = (
-    <div style={{ maxWidth: isWide ? 640 : undefined }}>
-      <FadeUp delay={10} distance={40}>
-        <h1
-          style={{
-            fontFamily,
-            fontWeight: 900,
-            fontSize: isWide ? 84 : 92,
-            letterSpacing: -2.5,
-            lineHeight: 1.05,
-            color: COLORS.teal,
-            margin: 0,
-            whiteSpace: "nowrap",
-          }}
-        >
-          {SITE_HERO.title}
-        </h1>
-      </FadeUp>
-      <FadeUp delay={24} distance={30} style={{ marginTop: 22 }}>
-        <p
-          style={{
-            fontFamily,
-            fontWeight: 400,
-            fontSize: isWide ? 30 : 33,
-            lineHeight: 1.35,
-            color: SITE.foreground80,
-            margin: 0,
-          }}
-        >
-          <RichText text={SITE_HERO.text} />
-        </p>
-      </FadeUp>
-      <FadeUp delay={40} distance={24} style={{ marginTop: 32 }}>
-        <TealButton variant="coral">{SITE_HERO.button}</TealButton>
-      </FadeUp>
-    </div>
-  );
+  const textBlock = <HeroCopy />;
 
   const graphic = (
     <div

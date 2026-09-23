@@ -1,63 +1,90 @@
-import { interpolate, interpolateColors } from "remotion";
 import { COLORS, fontFamily } from "../brand";
 import { SITE_HERO } from "./content";
 
 /**
  * The animated hero graphic from impero.no, rebuilt frame by frame.
  * progress 0 = three labelled rings ("Utvikling", "Drift", "Utstyr"),
- * progress 1 = the Impero icon (the site's CSS keyframes at 44%).
- * Geometry and dash values are the site's own (ImperoMorphGraphic.tsx, index.css).
+ * progress 1 = the Impero icon.
+ *
+ * The motion follows the site's CSS keyframes. The icon state is fitted to the
+ * icon in the logo file (public/logo/impero_farge.png) so the intro can build
+ * the logo out of this SVG with no visible seam:
+ *   ring thickness 10.6 % of the outer diameter, outer gap 31.7 degrees centred
+ *   12.4 degrees above the right, inner arc 144 degrees centred on top, dot
+ *   radius 16.4 % of the outer radius.
  */
+export const MORPH = {
+  viewW: 680,
+  viewH: 600,
+  cx: 340,
+  cy: 300,
+  outerR: 226,
+  innerR: 120.5,
+  stroke: 53.4,
+  dotR: 41,
+  outerGap: 12.5, // percent of the path
+  innerGap: 67,
+  outerSpin: 370.25, // degrees at progress 1
+  innerSpin: 570.9,
+  /** Outer diameter of the icon in viewBox units, including the stroke. */
+  iconDiameter: 2 * (226 + 53.4 / 2),
+};
+
 export const ImperoMorph: React.FC<{ progress: number; labelOpacity: number; width: number }> = ({
   progress: p,
   labelOpacity,
   width,
 }) => {
-  // Colours switch over the middle of the motion so the blend never lingers in muddy midtones.
-  const colorMix = interpolate(p, [0.46, 0.54], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const outerColor = interpolateColors(colorMix, [0, 1], [COLORS.copper, COLORS.turquoise]);
-  const dotColor = interpolateColors(colorMix, [0, 1], [COLORS.teal, COLORS.turquoise]);
-  const outerGap = 12 * p;
-  const innerGap = 66 * p;
+  // Colours flip at the midpoint of the motion: a blend would pass through muddy midtones.
+  const outerColor = p < 0.5 ? COLORS.copper : COLORS.turquoise;
+  const dotColor = p < 0.5 ? COLORS.teal : COLORS.turquoise;
+  const outerGap = MORPH.outerGap * p;
+  const innerGap = MORPH.innerGap * p;
   const { outer, inner, dot } = SITE_HERO.morphLabels;
+  const { cx, cy } = MORPH;
 
   return (
-    <svg viewBox="0 0 680 600" width={width} height={(width * 600) / 680} style={{ display: "block" }}>
+    <svg
+      viewBox={`0 0 ${MORPH.viewW} ${MORPH.viewH}`}
+      width={width}
+      height={(width * MORPH.viewH) / MORPH.viewW}
+      style={{ display: "block" }}
+    >
       <g>
         <circle
-          cx={340}
-          cy={300}
-          r={226}
+          cx={cx}
+          cy={cy}
+          r={MORPH.outerR}
           fill="none"
           stroke={outerColor}
-          strokeWidth={48}
+          strokeWidth={MORPH.stroke}
           strokeLinecap="round"
           pathLength={100}
           strokeDasharray={`${100 - outerGap} ${outerGap}`}
-          transform={`rotate(${369 * p} 340 300)`}
+          transform={`rotate(${MORPH.outerSpin * p} ${cx} ${cy})`}
         />
         <circle
-          cx={340}
-          cy={300}
-          r={118}
+          cx={cx}
+          cy={cy}
+          r={MORPH.innerR}
           fill="none"
           stroke={COLORS.turquoise}
-          strokeWidth={48}
+          strokeWidth={MORPH.stroke}
           strokeLinecap="round"
           pathLength={100}
           strokeDasharray={`${100 - innerGap} ${innerGap}`}
-          transform={`rotate(${569 * p} 340 300)`}
+          transform={`rotate(${MORPH.innerSpin * p} ${cx} ${cy})`}
         />
-        <circle cx={340} cy={300} r={36} fill={dotColor} />
+        <circle cx={cx} cy={cy} r={MORPH.dotR} fill={dotColor} />
       </g>
       <g opacity={labelOpacity} style={{ fontFamily, fontWeight: 900 }}>
-        <text x={340} y={76} textAnchor="middle" dominantBaseline="central" fill={COLORS.teal} fontSize={20}>
+        <text x={cx} y={cy - MORPH.outerR} textAnchor="middle" dominantBaseline="central" fill={COLORS.teal} fontSize={20}>
           {outer}
         </text>
-        <text x={340} y={182} textAnchor="middle" dominantBaseline="central" fill={COLORS.teal} fontSize={20}>
+        <text x={cx} y={cy - MORPH.innerR} textAnchor="middle" dominantBaseline="central" fill={COLORS.teal} fontSize={20}>
           {inner}
         </text>
-        <text x={340} y={300} textAnchor="middle" dominantBaseline="central" fill={COLORS.white} fontSize={18}>
+        <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fill={COLORS.white} fontSize={18}>
           {dot}
         </text>
       </g>
