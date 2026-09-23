@@ -1,0 +1,29 @@
+{
+  "name": "impero-motion-video",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Impero IT motion video built with Remotion",
+  "scripts": {
+    "dev": "remotion studio",
+    "render": "remotion render ImperoSocial out/impero-social.mp4",
+    "render:wide": "remotion render ImperoWide out/impero-wide.mp4",
+    "still": "remotion still ImperoSocial out/poster.png --frame=45",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.527",
+    "@remotion/fonts": "^4.0.527",
+    "@remotion/transitions": "^4.0.527",
+    "lucide-react": "^1.47.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.527"
+  },
+  "devDependencies": {
+    "@fontsource/inter": "^5.3.0",
+    "@types/node": "^26.6.2",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "typescript": "^5.9.3"
+  }
+}
