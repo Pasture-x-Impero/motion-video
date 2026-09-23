@@ -1,4 +1,4 @@
-import { interpolateColors } from "remotion";
+import { interpolate, interpolateColors } from "remotion";
 import { COLORS, fontFamily } from "../brand";
 import { SITE_HERO } from "./content";
 
@@ -13,8 +13,10 @@ export const ImperoMorph: React.FC<{ progress: number; labelOpacity: number; wid
   labelOpacity,
   width,
 }) => {
-  const outerColor = interpolateColors(p, [0, 1], [COLORS.copper, COLORS.turquoise]);
-  const dotColor = interpolateColors(p, [0, 1], [COLORS.teal, COLORS.turquoise]);
+  // Colours switch over the middle of the motion so the blend never lingers in muddy midtones.
+  const colorMix = interpolate(p, [0.3, 0.65], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const outerColor = interpolateColors(colorMix, [0, 1], [COLORS.copper, COLORS.turquoise]);
+  const dotColor = interpolateColors(colorMix, [0, 1], [COLORS.teal, COLORS.turquoise]);
   const outerGap = 12 * p;
   const innerGap = 66 * p;
   const { outer, inner, dot } = SITE_HERO.morphLabels;
