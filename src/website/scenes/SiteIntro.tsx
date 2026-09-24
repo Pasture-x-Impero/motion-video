@@ -281,7 +281,7 @@ export const SiteIntro: React.FC = () => {
           position: "absolute",
           left: ringPos.x,
           top: ringPos.y,
-          width: isWide ? 600 : width - pad * 2,
+          width: isWide ? 520 : width - pad * 2,
           transform: `translate(-50%, calc(-50% + ${turnLift}px))`,
           textAlign: "center",
           fontFamily,
