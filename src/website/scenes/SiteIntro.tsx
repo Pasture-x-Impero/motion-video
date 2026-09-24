@@ -39,31 +39,31 @@ export const INTRO_HOOK: Layer[] = [
 ];
 
 export const INTRO_TEXT = {
-  opener: "Sliter du med at …",
+  opener: "Kjenner du deg igjen?",
   turn: "Tenk om noen bare ordnet det.",
   title: "Din IT-avdeling",
 };
 
 export const INTRO_TIMING = {
-  opener: { in: 8, out: 64 },
+  opener: { in: 4, out: 44 },
   solo: [
-    { in: 78, out: 132 },
-    { in: 146, out: 198 },
-    { in: 212, out: 266 },
+    { in: 50, out: 100 },
+    { in: 106, out: 156 },
+    { in: 162, out: 214 },
   ],
-  turn: { in: 276, out: 334 },
-  stackIn: [350, 358, 366], // top to bottom: Utvikling, Drift, Utstyr
-  rings: [404, 436, 468], // dot, inner, outer: the bubble becomes the label while the ring grows
+  turn: { in: 220, out: 268 },
+  stackIn: 278, // all three bubbles cut in at once, no animation
+  rings: [304, 336, 368], // dot, inner, outer: the bubble becomes the label while the ring grows
   becomeFrames: 22,
-  labelsOut: 526,
-  morphStart: 536,
-  morphEnd: 596,
-  toLogoStart: 602,
-  toLogoEnd: 642,
-  wordmarkIn: 622,
-  logoOut: 686,
-  titleIn: 690,
-  duration: 770,
+  labelsOut: 426,
+  morphStart: 436,
+  morphEnd: 496,
+  toLogoStart: 502,
+  toLogoEnd: 542,
+  wordmarkIn: 522,
+  logoOut: 586,
+  titleIn: 590,
+  duration: 670,
 };
 
 const clamp = { extrapolateLeft: "clamp" as const, extrapolateRight: "clamp" as const };
@@ -94,8 +94,8 @@ const Typed: React.FC<{ text: string; start: number; charsPerFrame?: number; siz
 
 /** In and out fade with a small rise, for the solo frames. */
 const fadeIO = (frame: number, inAt: number, outAt: number) => ({
-  opacity: interpolate(frame, [inAt, inAt + 10, outAt, outAt + 10], [0, 1, 1, 0], clamp),
-  lift: interpolate(frame, [inAt, inAt + 12], [16, 0], clamp) + interpolate(frame, [outAt, outAt + 10], [0, -14], clamp),
+  opacity: interpolate(frame, [inAt, inAt + 6, outAt, outAt + 6], [0, 1, 1, 0], clamp),
+  lift: interpolate(frame, [inAt, inAt + 8], [14, 0], clamp) + interpolate(frame, [outAt, outAt + 6], [0, -12], clamp),
 });
 
 const Bubble: React.FC<{
@@ -183,7 +183,7 @@ export const SiteIntro: React.FC = () => {
       {/* 1. Opener */}
       {frame >= t.opener.in && frame <= t.opener.out + 12 ? (
         <div style={{ ...centred, top: cy, transform: `translateY(calc(-50% + ${opener.lift}px))`, opacity: opener.opacity }}>
-          <Typed text={INTRO_TEXT.opener} start={t.opener.in} charsPerFrame={1.2} size={isWide ? 60 : 62} weight={900} />
+          <Typed text={INTRO_TEXT.opener} start={t.opener.in} charsPerFrame={1.6} size={isWide ? 60 : 62} weight={900} />
         </div>
       ) : null}
 
@@ -194,7 +194,7 @@ export const SiteIntro: React.FC = () => {
         const f = fadeIO(frame, w.in, w.out);
         return (
           <div key={item.key} style={{ ...centred, top: cy, transform: `translateY(calc(-50% + ${f.lift}px))`, opacity: f.opacity }}>
-            <Bubble item={item} font={soloFont} typedStart={w.in + 2} charsPerFrame={1.3} />
+            <Bubble item={item} font={soloFont} typedStart={w.in + 1} charsPerFrame={1.8} />
           </div>
         );
       })}
@@ -267,13 +267,11 @@ export const SiteIntro: React.FC = () => {
 
       {/* 4. The stack: each bubble becomes its ring label in place while the ring grows */}
       {INTRO_HOOK.map((item, i) => {
-        const inAt = t.stackIn[2 - i]; // top bubble (Utvikling) first
-        if (frame < inAt || frame > t.labelsOut + 14) return null;
-        const popIn = spring({ frame: frame - inAt, fps, config: { damping: 16, stiffness: 140, mass: 0.7 } });
+        if (frame < t.stackIn || frame > t.labelsOut + 14) return null;
         const become = interpolate(frame, [t.rings[i], t.rings[i] + t.becomeFrames], [0, 1], { ...clamp, easing: ease });
         const y = labelY[item.key];
-        const bubbleOpacity = interpolate(become, [0.75, 1], [1, 0], clamp) * interpolate(popIn, [0, 1], [0, 1]);
-        const bubbleScale = lerp(1, 0.6, become) * (0.9 + popIn * 0.1);
+        const bubbleOpacity = interpolate(become, [0.75, 1], [1, 0], clamp);
+        const bubbleScale = lerp(1, 0.6, become);
         const labelIn = interpolate(become, [0.8, 1], [0, 1], clamp);
         const onDot = item.key === "dot";
         return (
