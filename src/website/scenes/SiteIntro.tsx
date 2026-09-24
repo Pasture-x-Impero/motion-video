@@ -1,8 +1,8 @@
+import { Code, LaptopMinimal, ShieldCheck } from "lucide-react";
 import { AbsoluteFill, Easing, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { COLORS, LOGOS, fontFamily } from "../../brand";
 import { useLayout } from "../../components";
 import { ImperoMorph, MORPH } from "../ImperoMorph";
-import { SITE_HERO } from "../content";
 import { SITE } from "../ui";
 
 /**
@@ -28,40 +28,40 @@ const ICON_D = 293.5;
 const WORDMARK_CROP_X = 340;
 
 export const INTRO_HOOK = [
-  { key: "dot" as const, text: "PC-en bruker fem minutter på å starte.", label: "Utstyr", color: COLORS.teal },
-  { key: "inner" as const, text: "Den ene som kan IT har ferie.", label: "Drift", color: COLORS.turquoise },
-  { key: "outer" as const, text: "Alt ligger fortsatt i et regneark.", label: "Utvikling", color: COLORS.copper },
+  { key: "dot" as const, text: "PC-en bruker fem minutter på å starte.", label: "Utstyr", color: COLORS.teal, icon: LaptopMinimal },
+  { key: "inner" as const, text: "Ingen vet om backupen faktisk virker.", label: "Drift", color: COLORS.turquoise, icon: ShieldCheck },
+  { key: "outer" as const, text: "Regnearket har blitt forretningssystemet.", label: "Utvikling", color: COLORS.copper, icon: Code },
 ];
 
 export const INTRO_TEXT = {
   turn: "Tenk om noen bare ordnet det.",
   first: "IT-avdelingen for små og mellomstore bedrifter.",
   second: "Vi hjelper deg å jobbe smartere med IT.",
-  title: SITE_HERO.title,
+  title: "Din IT-avdeling",
 };
 
 export const INTRO_TIMING = {
   bubbles: [10, 44, 70], // when each bubble starts typing
   bubbleSpeed: [1.25, 1.35, 1.45], // characters per frame
-  flyAfterTyped: 6, // frames between the last character and take off
+  turnIn: 104,
+  turnOut: 166,
+  rings: [172, 204, 236], // dot, inner ring, outer ring: the bubble takes off and the ring grows
   flyFrames: 22,
-  turnIn: 128,
-  turnOut: 176,
-  labelsOut: 182,
-  morphStart: 192,
-  morphEnd: 252,
-  toSenderStart: 256,
-  toSenderEnd: 286,
-  type1Start: 292,
-  type1Out: 368,
-  type2Start: 386,
-  type2Out: 460,
-  toLogoStart: 476,
-  toLogoEnd: 516,
-  wordmarkIn: 498,
-  logoOut: 568,
-  titleIn: 590,
-  duration: 660,
+  labelsOut: 292,
+  morphStart: 302,
+  morphEnd: 362,
+  toSenderStart: 366,
+  toSenderEnd: 396,
+  type1Start: 402,
+  type1Out: 476,
+  type2Start: 494,
+  type2Out: 566,
+  toLogoStart: 582,
+  toLogoEnd: 622,
+  wordmarkIn: 604,
+  logoOut: 668,
+  titleIn: 674,
+  duration: 740,
 };
 
 const clamp = { extrapolateLeft: "clamp" as const, extrapolateRight: "clamp" as const };
@@ -141,14 +141,13 @@ export const SiteIntro: React.FC = () => {
   const ty = iconY - cy - oy;
 
   // ---- Hook bubbles ----
-  const bubbleFont = isWide ? 34 : 36;
+  const bubbleFont = isWide ? 31 : 36;
   const bubbleH = bubbleFont * 2.35;
   const stackStep = bubbleH + 22;
-  const stackX = isWide ? width * 0.25 : cx;
+  const stackX = isWide ? width * 0.24 : cx;
   const stackY = (i: number) =>
     isWide ? cy + (i - 1) * stackStep : ringPos.y + ringOuterEdge + 76 + i * stackStep;
-  const typedDone = (i: number) => t.bubbles[i] + Math.ceil(INTRO_HOOK[i].text.length / t.bubbleSpeed[i]);
-  const flyStart = (i: number) => typedDone(i) + t.flyAfterTyped;
+  const flyStart = (i: number) => t.rings[i];
   const ringIn = (at: number) => spring({ frame: frame - at, fps, config: { damping: 14, stiffness: 110, mass: 0.8 } });
   const parts = { dot: ringIn(flyStart(0)), inner: ringIn(flyStart(1)), outer: ringIn(flyStart(2)) };
   const labelOffsetY = { outer: -MORPH.outerR * k, inner: -MORPH.innerR * k, dot: 0 };
@@ -163,8 +162,8 @@ export const SiteIntro: React.FC = () => {
   const wordmarkIn = interpolate(frame, [t.wordmarkIn, t.wordmarkIn + 24], [0, 1], { ...clamp, easing: Easing.out(Easing.cubic) });
   const logoOpacity = interpolate(frame, [t.logoOut, t.logoOut + 16], [1, 0], clamp);
   const graphicVisible = frame >= flyStart(0) && logoOpacity > 0;
-  const titleIn = spring({ frame: frame - t.titleIn, fps, config: { damping: 20, stiffness: 90 } });
-  const titleOpacity = interpolate(frame, [t.titleIn, t.titleIn + 16], [0, 1], clamp);
+  const titleIn = spring({ frame: frame - t.titleIn, fps, config: { damping: 18, stiffness: 130 } });
+  const titleOpacity = interpolate(frame, [t.titleIn, t.titleIn + 10], [0, 1], clamp);
 
   const sentenceSize = isWide ? 64 : 60;
   const sentenceMax = isWide ? 1200 : width - pad * 2;
@@ -251,7 +250,7 @@ export const SiteIntro: React.FC = () => {
                 whiteSpace: "nowrap",
               }}
             >
-              <span style={{ width: bubbleFont * 0.5, height: bubbleFont * 0.5, borderRadius: "50%", backgroundColor: item.color, flexShrink: 0 }} />
+              <item.icon size={bubbleFont * 0.95} strokeWidth={2.1} color={item.color} style={{ flexShrink: 0 }} />
               <Typed text={item.text} start={typeStart} charsPerFrame={t.bubbleSpeed[i]} size={bubbleFont} />
             </div>
             {labelIn > 0 ? (
@@ -276,18 +275,18 @@ export const SiteIntro: React.FC = () => {
         );
       })}
 
-      {/* The turn, where the bubbles were */}
+      {/* The turn, in the empty ring area, before the rings take its place */}
       <div
         style={{
           position: "absolute",
-          left: isWide ? pad : pad,
-          width: isWide ? width * 0.42 : width - pad * 2,
-          top: isWide ? cy : stackY(1),
-          transform: `translateY(calc(-50% + ${turnLift}px))`,
+          left: ringPos.x,
+          top: ringPos.y,
+          width: isWide ? 600 : width - pad * 2,
+          transform: `translate(-50%, calc(-50% + ${turnLift}px))`,
           textAlign: "center",
           fontFamily,
-          fontWeight: 700,
-          fontSize: isWide ? 42 : 42,
+          fontWeight: 800,
+          fontSize: isWide ? 46 : 48,
           lineHeight: 1.2,
           color: COLORS.teal,
           opacity: turnOpacity,
@@ -315,7 +314,7 @@ export const SiteIntro: React.FC = () => {
               letterSpacing: -3,
               color: COLORS.teal,
               opacity: titleOpacity,
-              transform: `translateY(${(1 - titleIn) * 30}px)`,
+              transform: `translateY(${(1 - titleIn) * 22}px)`,
               whiteSpace: "nowrap",
             }}
           >
