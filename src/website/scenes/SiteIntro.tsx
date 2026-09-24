@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import { Code, LaptopMinimal, ShieldCheck } from "lucide-react";
 import { AbsoluteFill, Easing, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { COLORS, LOGOS, fontFamily } from "../../brand";
@@ -6,14 +7,15 @@ import { ImperoMorph, MORPH } from "../ImperoMorph";
 import { SITE } from "../ui";
 
 /**
- * Intro, about 22 seconds
- *  1. Hook: three everyday IT problems are typed in as bubbles. As soon as a
- *     bubble is done it flies onto its ring while the ring grows: Utstyr (dot),
- *     Drift (inner ring), Utvikling (outer ring).
- *  2. Turn: "Tenk om noen bare ordnet det." next to the finished rings.
- *  3. The rings spin into the Impero icon. The icon shrinks and sits above the
- *     copy as the sender while two sentences are typed in.
- *  4. The icon glides into the full logo, the logo leaves, "Din IT-avdeling" closes.
+ * Intro, about 25 seconds
+ *  1. "Sliter du med at …" alone.
+ *  2. Three everyday IT problems, each typed in alone: Utstyr, Drift, Utvikling.
+ *  3. "Tenk om noen bare ordnet det." alone.
+ *  4. The three problems appear together in the centre, Utvikling on top and
+ *     Utstyr at the bottom, and become the three rings in place: the bottom one
+ *     the dot, the middle one the inner ring, the top one the outer ring.
+ *  5. The rings spin into the Impero icon, the icon glides into the full logo,
+ *     the logo leaves and "Din IT-avdeling" closes.
  *
  * The logo is composed of the morph SVG (icon state) plus the wordmark cropped
  * from the logo PNG, so there is no image swap. Measurements of the PNG
@@ -27,79 +29,102 @@ const ICON_CY = 150.5;
 const ICON_D = 293.5;
 const WORDMARK_CROP_X = 340;
 
-export const INTRO_HOOK = [
-  { key: "dot" as const, text: "PC-en bruker fem minutter på å starte.", label: "Utstyr", color: COLORS.teal, icon: LaptopMinimal },
-  { key: "inner" as const, text: "Ingen vet om backupen faktisk virker.", label: "Drift", color: COLORS.turquoise, icon: ShieldCheck },
-  { key: "outer" as const, text: "Regnearket har blitt forretningssystemet.", label: "Utvikling", color: COLORS.copper, icon: Code },
+type Layer = { key: "dot" | "inner" | "outer"; text: string; label: string; color: string; icon: LucideIcon };
+
+// In the order they are shown alone, and bottom to top in the stack
+export const INTRO_HOOK: Layer[] = [
+  { key: "dot", text: "PC-en bruker fem minutter på å starte.", label: "Utstyr", color: COLORS.teal, icon: LaptopMinimal },
+  { key: "inner", text: "Ingen vet om backupen faktisk virker.", label: "Drift", color: COLORS.turquoise, icon: ShieldCheck },
+  { key: "outer", text: "Regnearket har blitt forretningssystemet.", label: "Utvikling", color: COLORS.copper, icon: Code },
 ];
 
 export const INTRO_TEXT = {
+  opener: "Sliter du med at …",
   turn: "Tenk om noen bare ordnet det.",
-  first: "IT-avdelingen for små og mellomstore bedrifter.",
-  second: "Vi hjelper deg å jobbe smartere med IT.",
   title: "Din IT-avdeling",
 };
 
 export const INTRO_TIMING = {
-  bubbles: [10, 44, 70], // when each bubble starts typing
-  bubbleSpeed: [1.25, 1.35, 1.45], // characters per frame
-  turnIn: 104,
-  turnOut: 166,
-  rings: [172, 204, 236], // dot, inner ring, outer ring: the bubble takes off and the ring grows
-  flyFrames: 22,
-  labelsOut: 292,
-  morphStart: 302,
-  morphEnd: 362,
-  toSenderStart: 366,
-  toSenderEnd: 396,
-  type1Start: 402,
-  type1Out: 476,
-  type2Start: 494,
-  type2Out: 566,
-  toLogoStart: 582,
-  toLogoEnd: 622,
-  wordmarkIn: 604,
-  logoOut: 668,
-  titleIn: 674,
-  duration: 740,
+  opener: { in: 8, out: 64 },
+  solo: [
+    { in: 78, out: 132 },
+    { in: 146, out: 198 },
+    { in: 212, out: 266 },
+  ],
+  turn: { in: 276, out: 334 },
+  stackIn: [350, 358, 366], // top to bottom: Utvikling, Drift, Utstyr
+  rings: [404, 436, 468], // dot, inner, outer: the bubble becomes the label while the ring grows
+  becomeFrames: 22,
+  labelsOut: 526,
+  morphStart: 536,
+  morphEnd: 596,
+  toLogoStart: 602,
+  toLogoEnd: 642,
+  wordmarkIn: 622,
+  logoOut: 686,
+  titleIn: 690,
+  duration: 770,
 };
 
 const clamp = { extrapolateLeft: "clamp" as const, extrapolateRight: "clamp" as const };
 const ease = Easing.inOut(Easing.cubic);
 const lerp = (a: number, b: number, p: number) => a + (b - a) * p;
 
-/**
- * Text typed in character by character, no caret. The whole text is laid out
- * from the start with untyped characters hidden, so line breaks never jump.
- * The block is left aligned and centred as a whole.
- */
-const Typed: React.FC<{
-  text: string;
-  start: number;
-  charsPerFrame?: number;
-  fadeOutAt?: number;
-  size: number;
-  weight?: number;
-  color?: string;
-  maxWidth?: number;
-}> = ({ text, start, charsPerFrame = 1.3, fadeOutAt, size, weight = 700, color = COLORS.teal, maxWidth }) => {
+/** Text typed in character by character, no caret. Untyped characters are laid out but hidden. */
+const Typed: React.FC<{ text: string; start: number; charsPerFrame?: number; size: number; weight?: number; color?: string }> = ({
+  text,
+  start,
+  charsPerFrame = 1.3,
+  size,
+  weight = 700,
+  color = COLORS.teal,
+}) => {
   const frame = useCurrentFrame();
-  if (frame < start) return null;
-  const shown = Math.min(text.length, Math.floor((frame - start) * charsPerFrame));
-  const opacity = fadeOutAt === undefined ? 1 : interpolate(frame, [fadeOutAt, fadeOutAt + 12], [1, 0], clamp);
-  const lift = fadeOutAt === undefined ? 0 : interpolate(frame, [fadeOutAt, fadeOutAt + 12], [0, -20], clamp);
+  const shown = frame < start ? 0 : Math.min(text.length, Math.floor((frame - start) * charsPerFrame));
   return (
-    <div style={{ display: "flex", justifyContent: "center", opacity, transform: `translateY(${lift}px)` }}>
-      <div style={{ fontFamily, fontWeight: weight, fontSize: size, lineHeight: 1.18, color, textAlign: "left", maxWidth }}>
-        {Array.from(text).map((ch, i) => (
-          <span key={i} style={{ visibility: i < shown ? "visible" : "hidden" }}>
-            {ch}
-          </span>
-        ))}
-      </div>
+    <div style={{ fontFamily, fontWeight: weight, fontSize: size, lineHeight: 1.2, color, whiteSpace: "nowrap" }}>
+      {Array.from(text).map((ch, i) => (
+        <span key={i} style={{ visibility: i < shown ? "visible" : "hidden" }}>
+          {ch}
+        </span>
+      ))}
     </div>
   );
 };
+
+/** In and out fade with a small rise, for the solo frames. */
+const fadeIO = (frame: number, inAt: number, outAt: number) => ({
+  opacity: interpolate(frame, [inAt, inAt + 10, outAt, outAt + 10], [0, 1, 1, 0], clamp),
+  lift: interpolate(frame, [inAt, inAt + 12], [16, 0], clamp) + interpolate(frame, [outAt, outAt + 10], [0, -14], clamp),
+});
+
+const Bubble: React.FC<{
+  item: Layer;
+  font: number;
+  typedStart?: number;
+  charsPerFrame?: number;
+}> = ({ item, font, typedStart, charsPerFrame }) => (
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: font * 0.45,
+      backgroundColor: COLORS.white,
+      border: `1px solid ${SITE.cardBorder}`,
+      boxShadow: SITE.cardShadow,
+      borderRadius: 999,
+      padding: `${font * 0.55}px ${font * 0.95}px`,
+      whiteSpace: "nowrap",
+    }}
+  >
+    <item.icon size={font * 0.95} strokeWidth={2.1} color={item.color} style={{ flexShrink: 0 }} />
+    {typedStart === undefined ? (
+      <div style={{ fontFamily, fontWeight: 700, fontSize: font, lineHeight: 1.2, color: COLORS.teal }}>{item.text}</div>
+    ) : (
+      <Typed text={item.text} start={typedStart} charsPerFrame={charsPerFrame} size={font} />
+    )}
+  </div>
+);
 
 export const SiteIntro: React.FC = () => {
   const frame = useCurrentFrame();
@@ -110,10 +135,8 @@ export const SiteIntro: React.FC = () => {
   const cy = height / 2;
 
   // ---- Geometry ----
-  const svgWidth = isWide ? 700 : Math.min(width - 200, 700); // ring graphic width
+  const svgWidth = isWide ? 700 : Math.min(width - 200, 700);
   const k = svgWidth / MORPH.viewW;
-  const ringOuterEdge = (MORPH.outerR + MORPH.stroke / 2) * k;
-
   const logoW = isWide ? 820 : Math.min(width - 160, 760);
   const s = logoW / LOGO_W;
   const logoH = LOGO_H * s;
@@ -123,54 +146,80 @@ export const SiteIntro: React.FC = () => {
   const iconSvgH = (iconSvgW * MORPH.viewH) / MORPH.viewW;
   const ox = iconCx - logoW / 2;
   const oy = iconCy - logoH / 2;
-
-  // Where the icon centre sits in each phase, and the composite scale in that phase
-  const ringPos = isWide ? { x: width * 0.62, y: cy } : { x: cx, y: height * 0.4 };
   const ringScale = svgWidth / iconSvgW;
-  const senderIconD = isWide ? 120 : 132;
-  const senderPos = { x: cx, y: isWide ? height * 0.33 : height * 0.34 };
-  const senderScale = senderIconD / ((iconSvgW * MORPH.iconDiameter) / MORPH.viewW);
-  const logoPos = { x: cx + ox, y: cy + oy };
 
-  const p1 = interpolate(frame, [t.toSenderStart, t.toSenderEnd], [0, 1], { ...clamp, easing: ease });
+  // Icon centre: frame centre during the rings, then the icon's place in the centred logo
   const p2 = interpolate(frame, [t.toLogoStart, t.toLogoEnd], [0, 1], { ...clamp, easing: ease });
-  const iconX = lerp(lerp(ringPos.x, senderPos.x, p1), logoPos.x, p2);
-  const iconY = lerp(lerp(ringPos.y, senderPos.y, p1), logoPos.y, p2);
-  const scale = lerp(lerp(ringScale, senderScale, p1), 1, p2);
+  const iconX = lerp(cx, cx + ox, p2);
+  const iconY = lerp(cy, cy + oy, p2);
+  const scale = lerp(ringScale, 1, p2);
   const tx = iconX - cx - ox;
   const ty = iconY - cy - oy;
 
-  // ---- Hook bubbles ----
-  const bubbleFont = isWide ? 31 : 36;
-  const bubbleH = bubbleFont * 2.35;
-  const stackStep = bubbleH + 22;
-  const stackX = isWide ? width * 0.24 : cx;
-  const stackY = (i: number) =>
-    isWide ? cy + (i - 1) * stackStep : ringPos.y + ringOuterEdge + 76 + i * stackStep;
-  const flyStart = (i: number) => t.rings[i];
-  const ringIn = (at: number) => spring({ frame: frame - at, fps, config: { damping: 14, stiffness: 110, mass: 0.8 } });
-  const parts = { dot: ringIn(flyStart(0)), inner: ringIn(flyStart(1)), outer: ringIn(flyStart(2)) };
-  const labelOffsetY = { outer: -MORPH.outerR * k, inner: -MORPH.innerR * k, dot: 0 };
-  const labelsOut = interpolate(frame, [t.labelsOut, t.labelsOut + 12], [1, 0], clamp);
+  // ---- Solo frames ----
+  const soloFont = isWide ? 40 : 42;
+  const opener = fadeIO(frame, t.opener.in, t.opener.out);
+  const turn = fadeIO(frame, t.turn.in, t.turn.out);
 
-  // ---- Turn ----
-  const turnOpacity = interpolate(frame, [t.turnIn, t.turnIn + 16, t.turnOut, t.turnOut + 12], [0, 1, 1, 0], clamp);
-  const turnLift = interpolate(frame, [t.turnIn, t.turnIn + 16], [18, 0], clamp);
+  // ---- Stack in the centre, each bubble sitting where its ring label will be ----
+  const stackFont = isWide ? 31 : 34;
+  const labelY = { outer: cy - MORPH.outerR * k, inner: cy - MORPH.innerR * k, dot: cy };
+  const ringIn = (at: number) => spring({ frame: frame - at, fps, config: { damping: 14, stiffness: 110, mass: 0.8 } });
+  const parts = { dot: ringIn(t.rings[0]), inner: ringIn(t.rings[1]), outer: ringIn(t.rings[2]) };
+  const labelsOut = interpolate(frame, [t.labelsOut, t.labelsOut + 12], [1, 0], clamp);
 
   // ---- Morph, logo, title ----
   const progress = interpolate(frame, [t.morphStart, t.morphEnd], [0, 1], { ...clamp, easing: ease });
   const wordmarkIn = interpolate(frame, [t.wordmarkIn, t.wordmarkIn + 24], [0, 1], { ...clamp, easing: Easing.out(Easing.cubic) });
   const logoOpacity = interpolate(frame, [t.logoOut, t.logoOut + 16], [1, 0], clamp);
-  const graphicVisible = frame >= flyStart(0) && logoOpacity > 0;
+  const graphicVisible = frame >= t.rings[0] && logoOpacity > 0;
   const titleIn = spring({ frame: frame - t.titleIn, fps, config: { damping: 18, stiffness: 130 } });
   const titleOpacity = interpolate(frame, [t.titleIn, t.titleIn + 10], [0, 1], clamp);
 
-  const sentenceSize = isWide ? 64 : 60;
-  const sentenceMax = isWide ? 1200 : width - pad * 2;
-  const sentenceTop = isWide ? height * 0.44 : height * 0.45;
+  const centred: React.CSSProperties = { position: "absolute", left: 0, right: 0, display: "flex", justifyContent: "center" };
 
   return (
     <AbsoluteFill style={{ backgroundColor: COLORS.white }}>
+      {/* 1. Opener */}
+      {frame >= t.opener.in && frame <= t.opener.out + 12 ? (
+        <div style={{ ...centred, top: cy, transform: `translateY(calc(-50% + ${opener.lift}px))`, opacity: opener.opacity }}>
+          <Typed text={INTRO_TEXT.opener} start={t.opener.in} charsPerFrame={1.2} size={isWide ? 60 : 62} weight={900} />
+        </div>
+      ) : null}
+
+      {/* 2. Each problem alone */}
+      {INTRO_HOOK.map((item, i) => {
+        const w = t.solo[i];
+        if (frame < w.in || frame > w.out + 12) return null;
+        const f = fadeIO(frame, w.in, w.out);
+        return (
+          <div key={item.key} style={{ ...centred, top: cy, transform: `translateY(calc(-50% + ${f.lift}px))`, opacity: f.opacity }}>
+            <Bubble item={item} font={soloFont} typedStart={w.in + 2} charsPerFrame={1.3} />
+          </div>
+        );
+      })}
+
+      {/* 3. The turn */}
+      {frame >= t.turn.in && frame <= t.turn.out + 12 ? (
+        <div
+          style={{
+            ...centred,
+            top: cy,
+            padding: `0 ${pad}px`,
+            transform: `translateY(calc(-50% + ${turn.lift}px))`,
+            opacity: turn.opacity,
+            textAlign: "center",
+            fontFamily,
+            fontWeight: 900,
+            fontSize: isWide ? 60 : 62,
+            lineHeight: 1.15,
+            color: COLORS.teal,
+          }}
+        >
+          {INTRO_TEXT.turn}
+        </div>
+      ) : null}
+
       {/* Icon / logo composite */}
       {graphicVisible ? (
         <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
@@ -216,49 +265,36 @@ export const SiteIntro: React.FC = () => {
         </AbsoluteFill>
       ) : null}
 
-      {/* Hook bubbles: typed in the stack, then flying onto their ring */}
+      {/* 4. The stack: each bubble becomes its ring label in place while the ring grows */}
       {INTRO_HOOK.map((item, i) => {
-        const typeStart = t.bubbles[i];
-        if (frame < typeStart || frame > t.labelsOut + 14) return null;
-        const fly = interpolate(frame, [flyStart(i), flyStart(i) + t.flyFrames], [0, 1], { ...clamp, easing: ease });
-        const popIn = spring({ frame: frame - typeStart, fps, config: { damping: 16, stiffness: 140, mass: 0.7 } });
-        const targetX = ringPos.x;
-        const targetY = ringPos.y + labelOffsetY[item.key];
-        const x = lerp(stackX, targetX, fly);
-        const y = lerp(stackY(i), targetY, fly);
-        const bubbleOpacity = interpolate(fly, [0.9, 1], [1, 0], clamp) * (frame < typeStart + 4 ? popIn : 1);
-        const bubbleScale = lerp(1, 0.62, fly) * (0.9 + popIn * 0.1);
-        const labelIn = interpolate(fly, [0.88, 1], [0, 1], clamp);
+        const inAt = t.stackIn[2 - i]; // top bubble (Utvikling) first
+        if (frame < inAt || frame > t.labelsOut + 14) return null;
+        const popIn = spring({ frame: frame - inAt, fps, config: { damping: 16, stiffness: 140, mass: 0.7 } });
+        const become = interpolate(frame, [t.rings[i], t.rings[i] + t.becomeFrames], [0, 1], { ...clamp, easing: ease });
+        const y = labelY[item.key];
+        const bubbleOpacity = interpolate(become, [0.75, 1], [1, 0], clamp) * interpolate(popIn, [0, 1], [0, 1]);
+        const bubbleScale = lerp(1, 0.6, become) * (0.9 + popIn * 0.1);
+        const labelIn = interpolate(become, [0.8, 1], [0, 1], clamp);
         const onDot = item.key === "dot";
         return (
           <div key={item.key}>
             <div
               style={{
                 position: "absolute",
-                left: x,
+                left: cx,
                 top: y,
                 transform: `translate(-50%, -50%) scale(${bubbleScale})`,
                 opacity: bubbleOpacity,
-                display: "flex",
-                alignItems: "center",
-                gap: 16,
-                backgroundColor: COLORS.white,
-                border: `1px solid ${SITE.cardBorder}`,
-                boxShadow: SITE.cardShadow,
-                borderRadius: 999,
-                padding: `${bubbleFont * 0.55}px ${bubbleFont * 0.95}px`,
-                whiteSpace: "nowrap",
               }}
             >
-              <item.icon size={bubbleFont * 0.95} strokeWidth={2.1} color={item.color} style={{ flexShrink: 0 }} />
-              <Typed text={item.text} start={typeStart} charsPerFrame={t.bubbleSpeed[i]} size={bubbleFont} />
+              <Bubble item={item} font={stackFont} />
             </div>
             {labelIn > 0 ? (
               <div
                 style={{
                   position: "absolute",
-                  left: targetX,
-                  top: targetY,
+                  left: cx,
+                  top: y,
                   transform: `translate(-50%, -50%) scale(${0.8 + labelIn * 0.2})`,
                   opacity: labelIn * labelsOut,
                   fontFamily,
@@ -275,35 +311,7 @@ export const SiteIntro: React.FC = () => {
         );
       })}
 
-      {/* The turn, in the empty ring area, before the rings take its place */}
-      <div
-        style={{
-          position: "absolute",
-          left: ringPos.x,
-          top: ringPos.y,
-          width: isWide ? 520 : width - pad * 2,
-          transform: `translate(-50%, calc(-50% + ${turnLift}px))`,
-          textAlign: "center",
-          fontFamily,
-          fontWeight: 800,
-          fontSize: isWide ? 46 : 48,
-          lineHeight: 1.2,
-          color: COLORS.teal,
-          opacity: turnOpacity,
-        }}
-      >
-        {INTRO_TEXT.turn}
-      </div>
-
-      {/* Sentences under the sender icon */}
-      <div style={{ position: "absolute", left: pad, right: pad, top: sentenceTop }}>
-        <Typed text={INTRO_TEXT.first} start={t.type1Start} fadeOutAt={t.type1Out} size={sentenceSize} weight={900} maxWidth={sentenceMax} />
-        <div style={{ position: "absolute", left: 0, right: 0, top: 0 }}>
-          <Typed text={INTRO_TEXT.second} start={t.type2Start} fadeOutAt={t.type2Out} size={sentenceSize} weight={900} maxWidth={sentenceMax} />
-        </div>
-      </div>
-
-      {/* Closing title */}
+      {/* 5. Closing title */}
       {frame >= t.titleIn ? (
         <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
           <div
