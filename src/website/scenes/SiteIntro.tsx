@@ -1,18 +1,19 @@
-import { Check } from "lucide-react";
 import { AbsoluteFill, Easing, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { COLORS, LOGOS, fontFamily } from "../../brand";
 import { useLayout } from "../../components";
 import { ImperoMorph, MORPH } from "../ImperoMorph";
+import { SITE_HERO } from "../content";
 import { SITE } from "../ui";
 
 /**
  * Intro
- *  1. Hook: three everyday IT problems are typed in as notification bubbles.
+ *  1. Hook: three everyday IT problems are typed in as bubbles (Utstyr, Drift, Utvikling).
  *  2. Turn: "Tenk om noen bare ordnet det."
- *  3. The rings appear one by one and each bubble flies onto its ring and
- *     becomes the ring's label: Utvikling, Drift, Utstyr.
+ *  3. The rings build from the inside out and each bubble flies onto its ring
+ *     and becomes the ring's label.
  *  4. The rings spin into the Impero icon, the icon glides into the full logo.
- *  5. Two sentences are typed in below the logo, with a small flourish between.
+ *  5. The logo leaves, two sentences are typed in large, the logo returns,
+ *     leaves again, and "Din IT-avdeling" closes.
  *
  * The logo is composed of the morph SVG (icon state) plus the wordmark cropped
  * from the logo PNG, so there is no image swap. Measurements of the PNG
@@ -27,15 +28,16 @@ const ICON_D = 293.5;
 const WORDMARK_CROP_X = 340;
 
 export const INTRO_HOOK = [
-  { key: "outer" as const, text: "Alt ligger fortsatt i et regneark.", label: "Utvikling", color: COLORS.copper },
-  { key: "inner" as const, text: "Den ene som kan IT har ferie.", label: "Drift", color: COLORS.turquoise },
   { key: "dot" as const, text: "PC-en bruker fem minutter på å starte.", label: "Utstyr", color: COLORS.teal },
+  { key: "inner" as const, text: "Den ene som kan IT har ferie.", label: "Drift", color: COLORS.turquoise },
+  { key: "outer" as const, text: "Alt ligger fortsatt i et regneark.", label: "Utvikling", color: COLORS.copper },
 ];
 
 export const INTRO_TEXT = {
   turn: "Tenk om noen bare ordnet det.",
   first: "Er IT-avdelingen for små og mellomstore bedrifter.",
   second: "Vi hjelper deg å jobbe smartere med IT.",
+  title: SITE_HERO.title,
 };
 
 export const INTRO_TIMING = {
@@ -43,7 +45,7 @@ export const INTRO_TIMING = {
   bubbleSpeed: [1.1, 1.3, 1.5], // characters per frame, a little faster each time
   turnIn: 150,
   turnOut: 212,
-  rings: [222, 258, 294], // when each ring appears and its bubble flies to it
+  rings: [222, 258, 294], // dot, inner ring, outer ring
   flyFrames: 26,
   labelsOut: 340,
   morphStart: 350,
@@ -51,60 +53,59 @@ export const INTRO_TIMING = {
   toLogoStart: 432,
   toLogoEnd: 487,
   wordmarkIn: 460,
-  liftStart: 494,
-  liftEnd: 524,
-  type1Start: 530,
-  type1Out: 612,
-  flourish: 616,
-  type2Start: 644,
-  duration: 760,
+  logoOut: 532,
+  type1Start: 556,
+  type1Out: 652,
+  type2Start: 674,
+  type2Out: 764,
+  logoBackIn: 786,
+  logoBackOut: 852,
+  titleIn: 878,
+  duration: 960,
 };
 
 const clamp = { extrapolateLeft: "clamp" as const, extrapolateRight: "clamp" as const };
 
-/** Text typed in character by character with a blinking caret. */
-const Typewriter: React.FC<{
+/**
+ * Text typed in character by character, no caret. The whole text is laid out
+ * from the start with untyped characters hidden, so line breaks never jump.
+ */
+const Typed: React.FC<{
   text: string;
   start: number;
   charsPerFrame?: number;
   fadeOutAt?: number;
   size: number;
+  weight?: number;
+  color?: string;
   align?: "left" | "center";
-  caretColor?: string;
-}> = ({ text, start, charsPerFrame = 1.15, fadeOutAt, size, align = "center", caretColor = COLORS.turquoise }) => {
+  maxWidth?: number;
+}> = ({ text, start, charsPerFrame = 1.2, fadeOutAt, size, weight = 700, color = COLORS.teal, align = "center", maxWidth }) => {
   const frame = useCurrentFrame();
   if (frame < start) return null;
   const shown = Math.min(text.length, Math.floor((frame - start) * charsPerFrame));
-  const done = shown >= text.length;
-  const caretOn = !done || Math.floor(frame / 16) % 2 === 0;
   const opacity = fadeOutAt === undefined ? 1 : interpolate(frame, [fadeOutAt, fadeOutAt + 14], [1, 0], clamp);
   const lift = fadeOutAt === undefined ? 0 : interpolate(frame, [fadeOutAt, fadeOutAt + 14], [0, -24], clamp);
   return (
     <div
       style={{
         fontFamily,
-        fontWeight: 700,
+        fontWeight: weight,
         fontSize: size,
-        lineHeight: 1.3,
-        color: COLORS.teal,
+        lineHeight: 1.2,
+        color,
         textAlign: align,
         opacity,
         transform: `translateY(${lift}px)`,
-        whiteSpace: "nowrap",
+        maxWidth,
+        margin: align === "center" ? "0 auto" : undefined,
       }}
     >
-      {text.slice(0, shown)}
-      <span
-        style={{
-          display: "inline-block",
-          width: Math.max(3, size * 0.07),
-          height: size * 0.95,
-          marginLeft: 4,
-          verticalAlign: "-0.12em",
-          backgroundColor: caretColor,
-          opacity: caretOn ? 1 : 0,
-        }}
-      />
+      {Array.from(text).map((ch, i) => (
+        <span key={i} style={{ visibility: i < shown ? "visible" : "hidden" }}>
+          {ch}
+        </span>
+      ))}
     </div>
   );
 };
@@ -140,11 +141,19 @@ export const SiteIntro: React.FC = () => {
   const turnOpacity = interpolate(frame, [t.turnIn, t.turnIn + 18, t.turnOut, t.turnOut + 12], [0, 1, 1, 0], clamp);
   const turnLift = interpolate(frame, [t.turnIn, t.turnIn + 18], [20, 0], clamp);
 
-  // ---- 3. Rings appear, bubbles fly onto them and become labels ----
+  // ---- 3. Rings build from the inside out, bubbles fly onto them and become labels ----
+  // After the turn the bubbles park outside the ring area (below it in portrait, left of it in
+  // wide) so the rings have the centre to themselves, and each bubble flies in from there.
+  const park = interpolate(frame, [t.turnOut, t.turnOut + 22], [0, 1], { ...clamp, easing: Easing.inOut(Easing.cubic) });
+  const waitScale = isWide ? 0.72 : 0.8;
+  const waitStep = bubbleH * waitScale + 18;
+  const ringOuterEdge = (MORPH.outerR + MORPH.stroke / 2) * k;
+  const waitX = isWide ? width * 0.19 : width / 2;
+  const waitY = (i: number) =>
+    isWide ? height / 2 + (i - 1) * waitStep : height / 2 + ringOuterEdge + 70 + i * waitStep;
   const ringIn = (at: number) => spring({ frame: frame - at, fps, config: { damping: 14, stiffness: 110, mass: 0.8 } });
   const labelsOut = interpolate(frame, [t.labelsOut, t.labelsOut + 12], [1, 0], clamp);
-  const parts = { outer: ringIn(t.rings[0]), inner: ringIn(t.rings[1]), dot: ringIn(t.rings[2]) };
-  // Label positions in pixels relative to the frame centre (the SVG is centred there in the ring stage)
+  const parts = { dot: ringIn(t.rings[0]), inner: ringIn(t.rings[1]), outer: ringIn(t.rings[2]) };
   const labelOffsetY = { outer: -MORPH.outerR * k, inner: -MORPH.innerR * k, dot: 0 };
 
   // ---- 4. Rings spin into the icon, icon glides into the logo ----
@@ -153,16 +162,21 @@ export const SiteIntro: React.FC = () => {
   const z = 1 + (zoomFactor - 1) * q;
   const wordmarkIn = interpolate(frame, [t.wordmarkIn, t.wordmarkIn + 26], [0, 1], { ...clamp, easing: Easing.out(Easing.cubic) });
 
-  // ---- 5. Logo lifts, sentences are typed ----
-  const lift = interpolate(frame, [t.liftStart, t.liftEnd], [0, 1], { ...clamp, easing: Easing.inOut(Easing.cubic) });
-  const liftY = -(isWide ? height * 0.12 : height * 0.1);
-  const flourish = interpolate(frame, [t.flourish, t.flourish + 40], [0, 360], { ...clamp, easing: Easing.inOut(Easing.cubic) });
-  const graphicVisible = frame >= t.rings[0];
+  // ---- 5. Logo leaves, comes back, leaves again ----
+  const logoOpacity = interpolate(
+    frame,
+    [t.logoOut, t.logoOut + 16, t.logoBackIn, t.logoBackIn + 18, t.logoBackOut, t.logoBackOut + 16],
+    [1, 0, 0, 1, 1, 0],
+    clamp,
+  );
+  const logoBackScale = interpolate(frame, [t.logoBackIn, t.logoBackIn + 18], [0.96, 1], { ...clamp, easing: Easing.out(Easing.cubic) });
+  const graphicVisible = frame >= t.rings[0] && logoOpacity > 0;
 
-  const tx = -ox * q;
-  const ty = -oy * q + liftY * lift;
-  const textTop = height / 2 + liftY + logoH / 2 + (isWide ? 56 : 70);
-  const textSize = isWide ? 40 : 39;
+  const titleIn = spring({ frame: frame - t.titleIn, fps, config: { damping: 20, stiffness: 90 } });
+  const titleOpacity = interpolate(frame, [t.titleIn, t.titleIn + 16], [0, 1], clamp);
+
+  const sentenceSize = isWide ? 66 : 62;
+  const sentenceMax = isWide ? 1300 : undefined;
 
   return (
     <AbsoluteFill style={{ backgroundColor: COLORS.white }}>
@@ -174,8 +188,9 @@ export const SiteIntro: React.FC = () => {
               position: "relative",
               width: logoW,
               height: logoH,
-              transform: `translate(${tx}px, ${ty}px) scale(${z})`,
-              transformOrigin: `${iconCx}px ${iconCy}px`,
+              opacity: logoOpacity,
+              transform: `translate(${-ox * q}px, ${-oy * q}px) scale(${z * (frame >= t.logoBackIn ? logoBackScale : 1)})`,
+              transformOrigin: frame >= t.logoBackIn ? "center" : `${iconCx}px ${iconCy}px`,
             }}
           >
             <div
@@ -202,7 +217,6 @@ export const SiteIntro: React.FC = () => {
                 top: iconCy - iconSvgH / 2,
                 width: iconSvgW,
                 height: iconSvgH,
-                transform: `rotate(${flourish}deg)`,
               }}
             >
               <ImperoMorph progress={progress} labelOpacity={0} width={iconSvgW} parts={parts} />
@@ -214,23 +228,27 @@ export const SiteIntro: React.FC = () => {
       {/* Hook bubbles, each flying onto its ring and turning into the label */}
       {INTRO_HOOK.map((item, i) => {
         const typeStart = t.bubbles[i];
-        if (frame < typeStart) return null;
+        if (frame < typeStart || frame > t.labelsOut + 14) return null;
         const flyStart = t.rings[i];
         const fly = interpolate(frame, [flyStart, flyStart + t.flyFrames], [0, 1], { ...clamp, easing: Easing.inOut(Easing.cubic) });
         const popIn = spring({ frame: frame - typeStart, fps, config: { damping: 16, stiffness: 140, mass: 0.7 } });
         const targetY = height / 2 + labelOffsetY[item.key];
-        const y = interpolate(fly, [0, 1], [bubbleY(i) + bubbleH / 2, targetY]);
+        // Home position: the stack, then the parking spot after the turn
+        const homeX = interpolate(park, [0, 1], [width / 2, waitX]);
+        const homeY = interpolate(park, [0, 1], [bubbleY(i) + bubbleH / 2, waitY(i)]);
+        const homeScale = interpolate(park, [0, 1], [1, waitScale]);
+        const x = interpolate(fly, [0, 1], [homeX, width / 2]);
+        const y = interpolate(fly, [0, 1], [homeY, targetY]);
         const bubbleOpacity = interpolate(fly, [0.9, 1], [1, 0], clamp) * (frame < typeStart + 4 ? popIn : 1);
-        const bubbleScale = interpolate(fly, [0, 1], [1, 0.62]) * (0.9 + popIn * 0.1);
-        const pillIn = interpolate(fly, [0.88, 1], [0, 1], clamp);
-        const pillFont = isWide ? 25 : 27;
+        const bubbleScale = interpolate(fly, [0, 1], [homeScale, 0.62]) * (0.9 + popIn * 0.1);
+        const labelIn = interpolate(fly, [0.88, 1], [0, 1], clamp);
+        const onDot = item.key === "dot";
         return (
           <div key={item.key}>
-            {/* Notification bubble */}
             <div
               style={{
                 position: "absolute",
-                left: "50%",
+                left: x,
                 top: y,
                 transform: `translate(-50%, -50%) scale(${bubbleScale})`,
                 opacity: bubbleOpacity,
@@ -242,35 +260,27 @@ export const SiteIntro: React.FC = () => {
                 boxShadow: SITE.cardShadow,
                 borderRadius: 999,
                 padding: `${bubbleFont * 0.55}px ${bubbleFont * 0.95}px`,
+                whiteSpace: "nowrap",
               }}
             >
               <span style={{ width: bubbleFont * 0.5, height: bubbleFont * 0.5, borderRadius: "50%", backgroundColor: item.color, flexShrink: 0 }} />
-              <Typewriter text={item.text} start={typeStart} charsPerFrame={t.bubbleSpeed[i]} size={bubbleFont} align="left" caretColor={item.color} />
+              <Typed text={item.text} start={typeStart} charsPerFrame={t.bubbleSpeed[i]} size={bubbleFont} align="left" />
             </div>
-            {/* Label pill on the ring */}
-            {pillIn > 0 ? (
+            {labelIn > 0 ? (
               <div
                 style={{
                   position: "absolute",
                   left: "50%",
                   top: targetY,
-                  transform: `translate(-50%, -50%) scale(${0.7 + pillIn * 0.3})`,
-                  opacity: pillIn * labelsOut,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  backgroundColor: COLORS.white,
-                  boxShadow: SITE.cardShadow,
-                  borderRadius: 999,
-                  padding: `${pillFont * 0.28}px ${pillFont * 0.7}px ${pillFont * 0.28}px ${pillFont * 0.5}px`,
+                  transform: `translate(-50%, -50%) scale(${0.8 + labelIn * 0.2})`,
+                  opacity: labelIn * labelsOut,
                   fontFamily,
                   fontWeight: 900,
-                  fontSize: pillFont,
-                  color: COLORS.teal,
+                  fontSize: onDot ? 22 * k : 26 * k,
+                  color: onDot ? COLORS.white : COLORS.teal,
                   whiteSpace: "nowrap",
                 }}
               >
-                <Check size={pillFont * 0.95} strokeWidth={3} color={item.color} />
                 {item.label}
               </div>
             ) : null}
@@ -297,13 +307,35 @@ export const SiteIntro: React.FC = () => {
         {INTRO_TEXT.turn}
       </div>
 
-      {/* Typed sentences under the logo */}
-      <div style={{ position: "absolute", left: pad, right: pad, top: textTop }}>
-        <Typewriter text={INTRO_TEXT.first} start={t.type1Start} fadeOutAt={t.type1Out} size={textSize} />
-        <div style={{ position: "absolute", left: 0, right: 0, top: 0 }}>
-          <Typewriter text={INTRO_TEXT.second} start={t.type2Start} size={textSize} />
+      {/* Sentences, centred on an otherwise empty frame */}
+      <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", padding: `0 ${pad}px` }}>
+        <div style={{ width: "100%" }}>
+          <Typed text={INTRO_TEXT.first} start={t.type1Start} fadeOutAt={t.type1Out} size={sentenceSize} weight={900} maxWidth={sentenceMax} />
         </div>
-      </div>
+        <div style={{ position: "absolute", left: pad, right: pad }}>
+          <Typed text={INTRO_TEXT.second} start={t.type2Start} fadeOutAt={t.type2Out} size={sentenceSize} weight={900} maxWidth={sentenceMax} />
+        </div>
+      </AbsoluteFill>
+
+      {/* Closing title */}
+      {frame >= t.titleIn ? (
+        <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
+          <div
+            style={{
+              fontFamily,
+              fontWeight: 900,
+              fontSize: isWide ? 128 : 108,
+              letterSpacing: -3,
+              color: COLORS.teal,
+              opacity: titleOpacity,
+              transform: `translateY(${(1 - titleIn) * 30}px)`,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {INTRO_TEXT.title}
+          </div>
+        </AbsoluteFill>
+      ) : null}
     </AbsoluteFill>
   );
 };
