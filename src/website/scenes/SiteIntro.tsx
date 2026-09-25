@@ -1,14 +1,11 @@
-import type { LucideIcon } from "lucide-react";
-import { Code, LaptopMinimal, ShieldCheck } from "lucide-react";
 import { AbsoluteFill, Easing, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { COLORS, LOGOS, fontFamily } from "../../brand";
 import { useLayout } from "../../components";
 import { ImperoMorph, MORPH } from "../ImperoMorph";
-import { SITE } from "../ui";
 
 /**
  * Intro, about 25 seconds
- *  1. "Sliter du med at …" alone.
+ *  1. "Kjenner du deg igjen?" alone.
  *  2. Three everyday IT problems, each typed in alone: Utstyr, Drift, Utvikling.
  *  3. "Tenk om noen bare ordnet det." alone.
  *  4. The three problems appear together in the centre, Utvikling on top and
@@ -29,13 +26,13 @@ const ICON_CY = 150.5;
 const ICON_D = 293.5;
 const WORDMARK_CROP_X = 340;
 
-type Layer = { key: "dot" | "inner" | "outer"; text: string; label: string; color: string; icon: LucideIcon };
+type Layer = { key: "dot" | "inner" | "outer"; text: string; label: string };
 
 // In the order they are shown alone, and bottom to top in the stack
 export const INTRO_HOOK: Layer[] = [
-  { key: "dot", text: "PC-en bruker fem minutter på å starte.", label: "Utstyr", color: COLORS.teal, icon: LaptopMinimal },
-  { key: "inner", text: "Ingen vet om backupen faktisk virker.", label: "Drift", color: COLORS.turquoise, icon: ShieldCheck },
-  { key: "outer", text: "Regnearket har blitt forretningssystemet.", label: "Utvikling", color: COLORS.copper, icon: Code },
+  { key: "dot", text: "PC-en bruker fem minutter på å starte.", label: "Utstyr" },
+  { key: "inner", text: "Ingen vet om backupen faktisk virker.", label: "Drift" },
+  { key: "outer", text: "Regnearket har blitt forretningssystemet.", label: "Utvikling" },
 ];
 
 export const INTRO_TEXT = {
@@ -52,8 +49,8 @@ export const INTRO_TIMING = {
     { in: 162, out: 214 },
   ],
   turn: { in: 220, out: 268 },
-  stackIn: 278, // all three bubbles cut in at once, no animation
-  rings: [304, 336, 368], // dot, inner, outer: the bubble becomes the label while the ring grows
+  stackIn: 278, // all three lines cut in at once, no animation
+  rings: [304, 336, 368], // dot, inner, outer: the line becomes the label while the ring grows
   becomeFrames: 22,
   labelsOut: 426,
   morphStart: 436,
@@ -76,7 +73,7 @@ const Typed: React.FC<{ text: string; start: number; charsPerFrame?: number; siz
   start,
   charsPerFrame = 1.3,
   size,
-  weight = 700,
+  weight = 900,
   color = COLORS.teal,
 }) => {
   const frame = useCurrentFrame();
@@ -98,33 +95,13 @@ const fadeIO = (frame: number, inAt: number, outAt: number) => ({
   lift: interpolate(frame, [inAt, inAt + 8], [14, 0], clamp) + interpolate(frame, [outAt, outAt + 6], [0, -12], clamp),
 });
 
-const Bubble: React.FC<{
-  item: Layer;
-  font: number;
-  typedStart?: number;
-  charsPerFrame?: number;
-}> = ({ item, font, typedStart, charsPerFrame }) => (
-  <div
-    style={{
-      display: "flex",
-      alignItems: "center",
-      gap: font * 0.45,
-      backgroundColor: COLORS.white,
-      border: `1px solid ${SITE.cardBorder}`,
-      boxShadow: SITE.cardShadow,
-      borderRadius: 999,
-      padding: `${font * 0.55}px ${font * 0.95}px`,
-      whiteSpace: "nowrap",
-    }}
-  >
-    <item.icon size={font * 0.95} strokeWidth={2.1} color={item.color} style={{ flexShrink: 0 }} />
-    {typedStart === undefined ? (
-      <div style={{ fontFamily, fontWeight: 700, fontSize: font, lineHeight: 1.2, color: COLORS.teal }}>{item.text}</div>
-    ) : (
-      <Typed text={item.text} start={typedStart} charsPerFrame={charsPerFrame} size={font} />
-    )}
-  </div>
-);
+/** One line of copy, typed in or static. Every line in the video shares the same size. */
+const Line: React.FC<{ text: string; font: number; typedStart?: number; charsPerFrame?: number }> = ({ text, font, typedStart, charsPerFrame }) =>
+  typedStart === undefined ? (
+    <div style={{ fontFamily, fontWeight: 900, fontSize: font, lineHeight: 1.2, color: COLORS.teal, whiteSpace: "nowrap" }}>{text}</div>
+  ) : (
+    <Typed text={text} start={typedStart} charsPerFrame={charsPerFrame} size={font} />
+  );
 
 export const SiteIntro: React.FC = () => {
   const frame = useCurrentFrame();
@@ -156,16 +133,16 @@ export const SiteIntro: React.FC = () => {
   const tx = iconX - cx - ox;
   const ty = iconY - cy - oy;
 
-  // ---- Solo frames ----
-  const soloFont = isWide ? 40 : 42;
+  // ---- One text size for everything except the closing title ----
+  const textFont = isWide ? 52 : 44;
   const opener = fadeIO(frame, t.opener.in, t.opener.out);
   const turn = fadeIO(frame, t.turn.in, t.turn.out);
 
-  // ---- Stack in the centre, each bubble sitting where its ring label will be ----
-  const stackFont = isWide ? 31 : 34;
+  // ---- Stack in the centre, each line sitting where its ring label will be ----
   const labelY = { outer: cy - MORPH.outerR * k, inner: cy - MORPH.innerR * k, dot: cy };
   const ringIn = (at: number) => spring({ frame: frame - at, fps, config: { damping: 14, stiffness: 110, mass: 0.8 } });
-  const parts = { dot: ringIn(t.rings[0]), inner: ringIn(t.rings[1]), outer: ringIn(t.rings[2]) };
+  // The ring starts a beat after its line begins to fade, so the two never sit on top of each other
+  const parts = { dot: ringIn(t.rings[0] + 6), inner: ringIn(t.rings[1] + 6), outer: ringIn(t.rings[2] + 6) };
   const labelsOut = interpolate(frame, [t.labelsOut, t.labelsOut + 12], [1, 0], clamp);
 
   // ---- Morph, logo, title ----
@@ -183,7 +160,7 @@ export const SiteIntro: React.FC = () => {
       {/* 1. Opener */}
       {frame >= t.opener.in && frame <= t.opener.out + 12 ? (
         <div style={{ ...centred, top: cy, transform: `translateY(calc(-50% + ${opener.lift}px))`, opacity: opener.opacity }}>
-          <Typed text={INTRO_TEXT.opener} start={t.opener.in} charsPerFrame={1.6} size={isWide ? 60 : 62} weight={900} />
+          <Typed text={INTRO_TEXT.opener} start={t.opener.in} charsPerFrame={1.6} size={textFont} />
         </div>
       ) : null}
 
@@ -194,7 +171,7 @@ export const SiteIntro: React.FC = () => {
         const f = fadeIO(frame, w.in, w.out);
         return (
           <div key={item.key} style={{ ...centred, top: cy, transform: `translateY(calc(-50% + ${f.lift}px))`, opacity: f.opacity }}>
-            <Bubble item={item} font={soloFont} typedStart={w.in + 1} charsPerFrame={1.8} />
+            <Line text={item.text} font={textFont} typedStart={w.in + 1} charsPerFrame={1.8} />
           </div>
         );
       })}
@@ -211,7 +188,7 @@ export const SiteIntro: React.FC = () => {
             textAlign: "center",
             fontFamily,
             fontWeight: 900,
-            fontSize: isWide ? 60 : 62,
+            fontSize: textFont,
             lineHeight: 1.15,
             color: COLORS.teal,
           }}
@@ -265,14 +242,14 @@ export const SiteIntro: React.FC = () => {
         </AbsoluteFill>
       ) : null}
 
-      {/* 4. The stack: each bubble becomes its ring label in place while the ring grows */}
+      {/* 4. The stack: each line becomes its ring label in place while the ring grows */}
       {INTRO_HOOK.map((item, i) => {
         if (frame < t.stackIn || frame > t.labelsOut + 14) return null;
         const become = interpolate(frame, [t.rings[i], t.rings[i] + t.becomeFrames], [0, 1], { ...clamp, easing: ease });
         const y = labelY[item.key];
-        const bubbleOpacity = interpolate(become, [0.75, 1], [1, 0], clamp);
-        const bubbleScale = lerp(1, 0.6, become);
-        const labelIn = interpolate(become, [0.8, 1], [0, 1], clamp);
+        const lineOpacity = interpolate(become, [0, 0.45], [1, 0], clamp);
+        const lineScale = lerp(1, 0.85, Math.min(1, become * 2));
+        const labelIn = interpolate(become, [0.7, 1], [0, 1], clamp);
         const onDot = item.key === "dot";
         return (
           <div key={item.key}>
@@ -281,11 +258,11 @@ export const SiteIntro: React.FC = () => {
                 position: "absolute",
                 left: cx,
                 top: y,
-                transform: `translate(-50%, -50%) scale(${bubbleScale})`,
-                opacity: bubbleOpacity,
+                transform: `translate(-50%, -50%) scale(${lineScale})`,
+                opacity: lineOpacity,
               }}
             >
-              <Bubble item={item} font={stackFont} />
+              <Line text={item.text} font={textFont} />
             </div>
             {labelIn > 0 ? (
               <div
