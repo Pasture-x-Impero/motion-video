@@ -5,10 +5,12 @@ import { ImperoMorph, MORPH } from "../ImperoMorph";
 
 /**
  * Intro, about 25 seconds
- *  1. Three everyday IT problems typed in one after another, top to bottom,
+ *  1. Three everyday IT questions typed in one after another, top to bottom,
  *     with the middle line on the centre of the screen: Utstyr, Drift, Utvikling.
- *  2. The lines leave in the same order and the rings grow in their place:
- *     the dot (Utstyr), the inner ring (Drift), the outer ring (Utvikling).
+ *  2. The stack glides down into the ring positions and each line becomes its
+ *     ring label in place while the ring grows: the top line the dot, the
+ *     middle line the inner ring, the bottom line the outer ring. The labels sit
+ *     on the bottom of the rings so no line has to cross another.
  *  3. The rings spin into the Impero icon, the icon glides into the full logo,
  *     the logo leaves and "Din IT-avdeling" closes.
  *
@@ -28,9 +30,9 @@ type Layer = { key: "dot" | "inner" | "outer"; text: string; label: string };
 
 // In the order they are shown alone, and bottom to top in the stack
 export const INTRO_HOOK: Layer[] = [
-  { key: "dot", text: "PC-en bruker fem minutter på å starte.", label: "Utstyr" },
-  { key: "inner", text: "Ingen vet om backupen faktisk virker.", label: "Drift" },
-  { key: "outer", text: "Regnearket har blitt forretningssystemet.", label: "Utvikling" },
+  { key: "dot", text: "Bruker PC-en fem minutter på å starte?", label: "Utstyr" },
+  { key: "inner", text: "Vet noen om backupen faktisk virker?", label: "Drift" },
+  { key: "outer", text: "Har regnearket blitt forretningssystemet?", label: "Utvikling" },
 ];
 
 export const INTRO_TEXT = {
@@ -39,17 +41,18 @@ export const INTRO_TEXT = {
 
 export const INTRO_TIMING = {
   stackIn: [4, 36, 68], // dot, inner, outer: each line is typed in where it stays, top to bottom
-  linesOut: 122, // the lines leave in the same order, 8 frames apart
-  rings: [150, 182, 214], // dot, inner, outer
-  labelsOut: 272,
-  morphStart: 282,
-  morphEnd: 342,
-  toLogoStart: 348,
-  toLogoEnd: 388,
-  wordmarkIn: 368,
-  logoOut: 432,
-  titleIn: 436,
-  duration: 516,
+  settle: { in: 110, out: 134 }, // the stack glides down into the ring positions
+  rings: [124, 156, 188], // dot, inner, outer: the line becomes the label while the ring grows
+  becomeFrames: 22,
+  labelsOut: 246,
+  morphStart: 256,
+  morphEnd: 316,
+  toLogoStart: 322,
+  toLogoEnd: 362,
+  wordmarkIn: 342,
+  logoOut: 406,
+  titleIn: 410,
+  duration: 490,
 };
 
 const clamp = { extrapolateLeft: "clamp" as const, extrapolateRight: "clamp" as const };
@@ -122,9 +125,12 @@ export const SiteIntro: React.FC = () => {
   // ---- Stack in the centre, each line sitting where its ring label will be ----
   const lineGap = textFont * 2.6;
   const lineY = { dot: cy - lineGap, inner: cy, outer: cy + lineGap };
-  const labelY = { outer: cy - MORPH.outerR * k, inner: cy - MORPH.innerR * k, dot: cy };
+  // Labels on the bottom of the rings: every line then only moves down, none cross
+  const labelY = { dot: cy, inner: cy + MORPH.innerR * k, outer: cy + MORPH.outerR * k };
+  const settle = interpolate(frame, [t.settle.in, t.settle.out], [0, 1], { ...clamp, easing: ease });
   const ringIn = (at: number) => spring({ frame: frame - at, fps, config: { damping: 14, stiffness: 110, mass: 0.8 } });
-  const parts = { dot: ringIn(t.rings[0]), inner: ringIn(t.rings[1]), outer: ringIn(t.rings[2]) };
+  // The ring starts a beat after its line begins to fade, so the two never sit on top of each other
+  const parts = { dot: ringIn(t.rings[0] + 6), inner: ringIn(t.rings[1] + 6), outer: ringIn(t.rings[2] + 6) };
   const labelsOut = interpolate(frame, [t.labelsOut, t.labelsOut + 12], [1, 0], clamp);
 
   // ---- Morph, logo, title ----
@@ -184,23 +190,25 @@ export const SiteIntro: React.FC = () => {
         </AbsoluteFill>
       ) : null}
 
-      {/* 1. The stack: lines typed in one by one, top to bottom, then leaving in the same order */}
+      {/* 1. The stack: lines typed in one by one, top to bottom, each becoming its ring label while the ring grows */}
       {INTRO_HOOK.map((item, i) => {
         if (frame < t.stackIn[i] || frame > t.labelsOut + 14) return null;
-        const outAt = t.linesOut + i * 8;
-        const gone = interpolate(frame, [outAt, outAt + 10], [0, 1], { ...clamp, easing: ease });
-        const labelIn = interpolate(frame, [t.rings[i] + 8, t.rings[i] + 18], [0, 1], { ...clamp, easing: ease });
+        const become = interpolate(frame, [t.rings[i], t.rings[i] + t.becomeFrames], [0, 1], { ...clamp, easing: ease });
+        const y = lerp(lineY[item.key], labelY[item.key], settle);
+        const lineOpacity = interpolate(become, [0, 0.45], [1, 0], clamp);
+        const lineScale = lerp(1, 0.85, Math.min(1, become * 2));
+        const labelIn = interpolate(become, [0.7, 1], [0, 1], clamp);
         const onDot = item.key === "dot";
         return (
           <div key={item.key}>
-            {gone < 1 ? (
+            {lineOpacity > 0 ? (
               <div
                 style={{
                   position: "absolute",
                   left: cx,
-                  top: lineY[item.key],
-                  transform: `translate(-50%, -50%) scale(${lerp(1, 0.9, gone)})`,
-                  opacity: 1 - gone,
+                  top: y,
+                  transform: `translate(-50%, -50%) scale(${lineScale})`,
+                  opacity: lineOpacity,
                 }}
               >
                 <Line text={item.text} font={textFont} typedStart={t.stackIn[i]} charsPerFrame={1.8} />
@@ -211,7 +219,7 @@ export const SiteIntro: React.FC = () => {
                 style={{
                   position: "absolute",
                   left: cx,
-                  top: labelY[item.key],
+                  top: y,
                   transform: `translate(-50%, -50%) scale(${0.8 + labelIn * 0.2})`,
                   opacity: labelIn * labelsOut,
                   fontFamily,
