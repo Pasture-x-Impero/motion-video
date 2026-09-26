@@ -5,12 +5,11 @@ import { ImperoMorph, MORPH } from "../ImperoMorph";
 
 /**
  * Intro, about 25 seconds
- *  1. "Kjenner du deg igjen?" alone.
- *  2. Three everyday IT problems typed in one after another, building a stack
- *     in the centre: Utstyr at the bottom first, then Drift, then Utvikling on top.
- *  3. Each line becomes its ring in place: the bottom one the dot, the middle
- *     one the inner ring, the top one the outer ring.
- *  4. The rings spin into the Impero icon, the icon glides into the full logo,
+ *  1. Three everyday IT problems typed in one after another, top to bottom,
+ *     with the middle line on the centre of the screen: Utstyr, Drift, Utvikling.
+ *  2. The lines leave in the same order and the rings grow in their place:
+ *     the dot (Utstyr), the inner ring (Drift), the outer ring (Utvikling).
+ *  3. The rings spin into the Impero icon, the icon glides into the full logo,
  *     the logo leaves and "Din IT-avdeling" closes.
  *
  * The logo is composed of the morph SVG (icon state) plus the wordmark cropped
@@ -35,24 +34,22 @@ export const INTRO_HOOK: Layer[] = [
 ];
 
 export const INTRO_TEXT = {
-  opener: "Kjenner du deg igjen?",
   title: "Din IT-avdeling",
 };
 
 export const INTRO_TIMING = {
-  opener: { in: 4, out: 44 },
-  stackIn: [54, 86, 118], // dot, inner, outer: each line is typed in where it will stay
-  rings: [176, 208, 240], // dot, inner, outer: the line becomes the label while the ring grows
-  becomeFrames: 22,
-  labelsOut: 298,
-  morphStart: 308,
-  morphEnd: 368,
-  toLogoStart: 374,
-  toLogoEnd: 414,
-  wordmarkIn: 394,
-  logoOut: 458,
-  titleIn: 462,
-  duration: 542,
+  stackIn: [4, 36, 68], // dot, inner, outer: each line is typed in where it stays, top to bottom
+  linesOut: 122, // the lines leave in the same order, 8 frames apart
+  rings: [150, 182, 214], // dot, inner, outer
+  labelsOut: 272,
+  morphStart: 282,
+  morphEnd: 342,
+  toLogoStart: 348,
+  toLogoEnd: 388,
+  wordmarkIn: 368,
+  logoOut: 432,
+  titleIn: 436,
+  duration: 516,
 };
 
 const clamp = { extrapolateLeft: "clamp" as const, extrapolateRight: "clamp" as const };
@@ -80,12 +77,6 @@ const Typed: React.FC<{ text: string; start: number; charsPerFrame?: number; siz
     </div>
   );
 };
-
-/** In and out fade with a small rise, for the opener. */
-const fadeIO = (frame: number, inAt: number, outAt: number) => ({
-  opacity: interpolate(frame, [inAt, inAt + 6, outAt, outAt + 6], [0, 1, 1, 0], clamp),
-  lift: interpolate(frame, [inAt, inAt + 8], [14, 0], clamp) + interpolate(frame, [outAt, outAt + 6], [0, -12], clamp),
-});
 
 /** One line of copy, typed in or static. Every line in the video shares the same size. */
 const Line: React.FC<{ text: string; font: number; typedStart?: number; charsPerFrame?: number }> = ({ text, font, typedStart, charsPerFrame }) =>
@@ -127,13 +118,13 @@ export const SiteIntro: React.FC = () => {
 
   // ---- One text size for everything except the closing title ----
   const textFont = isWide ? 52 : 44;
-  const opener = fadeIO(frame, t.opener.in, t.opener.out);
 
   // ---- Stack in the centre, each line sitting where its ring label will be ----
+  const lineGap = textFont * 2.6;
+  const lineY = { dot: cy - lineGap, inner: cy, outer: cy + lineGap };
   const labelY = { outer: cy - MORPH.outerR * k, inner: cy - MORPH.innerR * k, dot: cy };
   const ringIn = (at: number) => spring({ frame: frame - at, fps, config: { damping: 14, stiffness: 110, mass: 0.8 } });
-  // The ring starts a beat after its line begins to fade, so the two never sit on top of each other
-  const parts = { dot: ringIn(t.rings[0] + 6), inner: ringIn(t.rings[1] + 6), outer: ringIn(t.rings[2] + 6) };
+  const parts = { dot: ringIn(t.rings[0]), inner: ringIn(t.rings[1]), outer: ringIn(t.rings[2]) };
   const labelsOut = interpolate(frame, [t.labelsOut, t.labelsOut + 12], [1, 0], clamp);
 
   // ---- Morph, logo, title ----
@@ -148,13 +139,6 @@ export const SiteIntro: React.FC = () => {
 
   return (
     <AbsoluteFill style={{ backgroundColor: COLORS.white }}>
-      {/* 1. Opener */}
-      {frame >= t.opener.in && frame <= t.opener.out + 12 ? (
-        <div style={{ ...centred, top: cy, transform: `translateY(calc(-50% + ${opener.lift}px))`, opacity: opener.opacity }}>
-          <Typed text={INTRO_TEXT.opener} start={t.opener.in} charsPerFrame={1.6} size={textFont} />
-        </div>
-      ) : null}
-
       {/* Icon / logo composite */}
       {graphicVisible ? (
         <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
@@ -200,34 +184,34 @@ export const SiteIntro: React.FC = () => {
         </AbsoluteFill>
       ) : null}
 
-      {/* 2. The stack: lines typed in one by one, each becoming its ring label in place while the ring grows */}
+      {/* 1. The stack: lines typed in one by one, top to bottom, then leaving in the same order */}
       {INTRO_HOOK.map((item, i) => {
         if (frame < t.stackIn[i] || frame > t.labelsOut + 14) return null;
-        const become = interpolate(frame, [t.rings[i], t.rings[i] + t.becomeFrames], [0, 1], { ...clamp, easing: ease });
-        const y = labelY[item.key];
-        const lineOpacity = interpolate(become, [0, 0.45], [1, 0], clamp);
-        const lineScale = lerp(1, 0.85, Math.min(1, become * 2));
-        const labelIn = interpolate(become, [0.7, 1], [0, 1], clamp);
+        const outAt = t.linesOut + i * 8;
+        const gone = interpolate(frame, [outAt, outAt + 10], [0, 1], { ...clamp, easing: ease });
+        const labelIn = interpolate(frame, [t.rings[i] + 8, t.rings[i] + 18], [0, 1], { ...clamp, easing: ease });
         const onDot = item.key === "dot";
         return (
           <div key={item.key}>
-            <div
-              style={{
-                position: "absolute",
-                left: cx,
-                top: y,
-                transform: `translate(-50%, -50%) scale(${lineScale})`,
-                opacity: lineOpacity,
-              }}
-            >
-              <Line text={item.text} font={textFont} typedStart={t.stackIn[i]} charsPerFrame={1.8} />
-            </div>
+            {gone < 1 ? (
+              <div
+                style={{
+                  position: "absolute",
+                  left: cx,
+                  top: lineY[item.key],
+                  transform: `translate(-50%, -50%) scale(${lerp(1, 0.9, gone)})`,
+                  opacity: 1 - gone,
+                }}
+              >
+                <Line text={item.text} font={textFont} typedStart={t.stackIn[i]} charsPerFrame={1.8} />
+              </div>
+            ) : null}
             {labelIn > 0 ? (
               <div
                 style={{
                   position: "absolute",
                   left: cx,
-                  top: y,
+                  top: labelY[item.key],
                   transform: `translate(-50%, -50%) scale(${0.8 + labelIn * 0.2})`,
                   opacity: labelIn * labelsOut,
                   fontFamily,
@@ -244,7 +228,7 @@ export const SiteIntro: React.FC = () => {
         );
       })}
 
-      {/* 3. Closing title */}
+      {/* 2. Closing title */}
       {frame >= t.titleIn ? (
         <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
           <div
