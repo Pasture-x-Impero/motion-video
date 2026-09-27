@@ -7,10 +7,11 @@ import { ImperoMorph, MORPH } from "../ImperoMorph";
  * Intro, about 25 seconds
  *  1. Three everyday IT questions typed in one after another, top to bottom,
  *     with the middle line on the centre of the screen: Utstyr, Drift, Utvikling.
- *  2. The stack glides down into the ring positions and each line becomes its
- *     ring label in place while the ring grows: the top line the dot, the
- *     middle line the inner ring, the bottom line the outer ring. The labels sit
- *     on the bottom of the rings so no line has to cross another.
+ *  2. The stack glides down so each line sits on the bottom of its ring, then
+ *     each line becomes its ring while the ring grows: the top line the dot,
+ *     the middle line the inner ring, the bottom line the outer ring. The name
+ *     slides along the ring from the bottom round to the top, where the site
+ *     has it, so no line has to cross another.
  *  3. The rings spin into the Impero icon, the icon glides into the full logo,
  *     the logo leaves and "Din IT-avdeling" closes.
  *
@@ -125,12 +126,12 @@ export const SiteIntro: React.FC = () => {
   // ---- Stack in the centre, each line sitting where its ring label will be ----
   const lineGap = textFont * 2.6;
   const lineY = { dot: cy - lineGap, inner: cy, outer: cy + lineGap };
-  // Labels on the bottom of the rings: every line then only moves down, none cross
-  const labelY = { dot: cy, inner: cy + MORPH.innerR * k, outer: cy + MORPH.outerR * k };
+  // Each line settles on the bottom of its ring: every line then only moves down, none cross
+  const ringR = { dot: 0, inner: MORPH.innerR * k, outer: MORPH.outerR * k };
   const settle = interpolate(frame, [t.settle.in, t.settle.out], [0, 1], { ...clamp, easing: ease });
   const ringIn = (at: number) => spring({ frame: frame - at, fps, config: { damping: 14, stiffness: 110, mass: 0.8 } });
   // The ring starts a beat after its line begins to fade, so the two never sit on top of each other
-  const parts = { dot: ringIn(t.rings[0] + 6), inner: ringIn(t.rings[1] + 6), outer: ringIn(t.rings[2] + 6) };
+  const parts = { dot: ringIn(t.rings[0] + 8), inner: ringIn(t.rings[1] + 8), outer: ringIn(t.rings[2] + 8) };
   const labelsOut = interpolate(frame, [t.labelsOut, t.labelsOut + 12], [1, 0], clamp);
 
   // ---- Morph, logo, title ----
@@ -194,10 +195,16 @@ export const SiteIntro: React.FC = () => {
       {INTRO_HOOK.map((item, i) => {
         if (frame < t.stackIn[i] || frame > t.labelsOut + 14) return null;
         const become = interpolate(frame, [t.rings[i], t.rings[i] + t.becomeFrames], [0, 1], { ...clamp, easing: ease });
-        const y = lerp(lineY[item.key], labelY[item.key], settle);
+        const r = ringR[item.key];
+        const y = lerp(lineY[item.key], cy + r, settle);
         const lineOpacity = interpolate(become, [0, 0.45], [1, 0], clamp);
         const lineScale = lerp(1, 0.85, Math.min(1, become * 2));
-        const labelIn = interpolate(become, [0.7, 1], [0, 1], clamp);
+        // The name slides along the ring from the bottom round the right side to the top
+        const travel = interpolate(become, [0.35, 1], [0, 1], clamp);
+        const angle = Math.PI / 2 - Math.PI * travel;
+        const labelX = cx + r * Math.cos(angle);
+        const labelY = cy + r * Math.sin(angle);
+        const labelIn = interpolate(become, [0.45, 0.75], [0, 1], clamp);
         const onDot = item.key === "dot";
         return (
           <div key={item.key}>
@@ -218,8 +225,8 @@ export const SiteIntro: React.FC = () => {
               <div
                 style={{
                   position: "absolute",
-                  left: cx,
-                  top: y,
+                  left: labelX,
+                  top: labelY,
                   transform: `translate(-50%, -50%) scale(${0.8 + labelIn * 0.2})`,
                   opacity: labelIn * labelsOut,
                   fontFamily,
