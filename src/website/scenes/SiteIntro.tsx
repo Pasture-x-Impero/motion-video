@@ -42,17 +42,17 @@ export const INTRO_TEXT = {
 
 export const INTRO_TIMING = {
   stackIn: [4, 36, 68], // dot, inner, outer: each line is typed in where it stays, top to bottom
-  rings: [124, 156, 188], // dot, inner, outer: the line fades where it stands while the ring grows
-  becomeFrames: 22,
-  labelsOut: 246,
-  morphStart: 256,
-  morphEnd: 316,
-  toLogoStart: 322,
-  toLogoEnd: 362,
-  wordmarkIn: 342,
-  logoOut: 406,
-  titleIn: 410,
-  duration: 490,
+  rings: [102, 124, 146], // dot, inner, outer: the line fades where it stands while the ring grows
+  becomeFrames: 26,
+  labelsOut: 196,
+  morphStart: 202,
+  morphEnd: 262,
+  toLogoStart: 268,
+  toLogoEnd: 308,
+  wordmarkIn: 288,
+  logoOut: 352,
+  titleIn: 356,
+  duration: 436,
 };
 
 const clamp = { extrapolateLeft: "clamp" as const, extrapolateRight: "clamp" as const };
@@ -133,9 +133,9 @@ export const SiteIntro: React.FC = () => {
   const textFont = isWide ? 52 : 44;
 
   // ---- Stack in the centre, each line sitting where its ring label will be ----
-  const ringIn = (at: number) => spring({ frame: frame - at, fps, config: { damping: 14, stiffness: 110, mass: 0.8 } });
-  // The ring starts a beat after its line begins to fade, so the two never sit on top of each other
-  const parts = { dot: ringIn(t.rings[0] + 6), inner: ringIn(t.rings[1] + 6), outer: ringIn(t.rings[2] + 6) };
+  const ringIn = (at: number) => spring({ frame: frame - at, fps, config: { damping: 22, stiffness: 90, mass: 0.9 } });
+  // The ring grows while its line is still fading, so the two read as one movement
+  const parts = { dot: ringIn(t.rings[0] + 3), inner: ringIn(t.rings[1] + 3), outer: ringIn(t.rings[2] + 3) };
   const labelsOut = interpolate(frame, [t.labelsOut, t.labelsOut + 12], [1, 0], clamp);
 
   // ---- Morph, logo, title ----
@@ -201,9 +201,9 @@ export const SiteIntro: React.FC = () => {
         const become = interpolate(frame, [t.rings[i], t.rings[i] + t.becomeFrames], [0, 1], { ...clamp, easing: ease });
         // A few pixels of settling onto the ring's bottom edge, too small to read as motion
         const y = lerp(lineY[item.key], bottomY[item.key], Math.min(1, become * 2));
-        const lineOpacity = interpolate(become, [0, 0.45], [1, 0], clamp);
-        const lineScale = lerp(1, 0.85, Math.min(1, become * 2));
-        const labelIn = interpolate(become, [0.7, 1], [0, 1], clamp);
+        const lineOpacity = interpolate(become, [0, 0.55], [1, 0], clamp);
+        const lineScale = lerp(1, 0.9, Math.min(1, become * 1.8));
+        const labelIn = interpolate(become, [0.55, 1], [0, 1], clamp);
         const onDot = item.key === "dot";
         return (
           <div key={item.key}>
