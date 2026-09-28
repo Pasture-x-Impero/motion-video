@@ -7,11 +7,11 @@ import { ImperoMorph, MORPH } from "../ImperoMorph";
  * Intro, about 25 seconds
  *  1. Three everyday IT questions typed in one after another, top to bottom,
  *     with the middle line on the centre of the screen: Utstyr, Drift, Utvikling.
- *  2. The rings build around the top line, so each line already sits on the
- *     bottom of its own ring: the top line where the dot goes, the middle line
- *     on the inner ring, the bottom line on the outer ring. One by one each line
- *     fades where it stands while its ring grows through that spot, and the
- *     name appears on top of the ring: Utstyr, Drift, Utvikling. No text moves.
+ *  2. One by one, each line travels to the place of its own ring name while it
+ *     shrinks and fades, and its ring grows there as it arrives: the top line
+ *     down into the dot (Utstyr), the middle line up to the top of the inner
+ *     ring (Drift), the bottom line up to the top of the outer ring (Utvikling).
+ *     The rings are centred on the screen, so the lines cross on the way.
  *  3. The rings spin into the Impero icon, the icon glides into the full logo,
  *     the logo leaves and "Din IT-avdeling" closes.
  *
@@ -42,17 +42,18 @@ export const INTRO_TEXT = {
 
 export const INTRO_TIMING = {
   stackIn: [4, 36, 68], // dot, inner, outer: each line is typed in where it stays, top to bottom
-  rings: [102, 124, 146], // dot, inner, outer: the line fades where it stands while the ring grows
-  becomeFrames: 26,
-  labelsOut: 196,
-  morphStart: 202,
-  morphEnd: 262,
-  toLogoStart: 268,
-  toLogoEnd: 308,
-  wordmarkIn: 288,
-  logoOut: 352,
-  titleIn: 356,
-  duration: 436,
+  travel: [98, 110, 122], // dot, inner, outer: each line sets off for its ring name
+  travelFrames: 22,
+  rings: [110, 122, 134], // dot, inner, outer: each ring grows as its line arrives
+  labelsOut: 186,
+  morphStart: 192,
+  morphEnd: 252,
+  toLogoStart: 258,
+  toLogoEnd: 298,
+  wordmarkIn: 278,
+  logoOut: 342,
+  titleIn: 346,
+  duration: 426,
 };
 
 const clamp = { extrapolateLeft: "clamp" as const, extrapolateRight: "clamp" as const };
@@ -113,29 +114,23 @@ export const SiteIntro: React.FC = () => {
 
   // Icon centre: frame centre during the rings, then the icon's place in the centred logo
   const p2 = interpolate(frame, [t.toLogoStart, t.toLogoEnd], [0, 1], { ...clamp, easing: ease });
-  // ---- Stack: middle line on the screen centre, rings centred on the top line ----
-  // The line spacing is close to the ring radii, so each line sits on the bottom of its own ring.
-  const innerR = MORPH.innerR * k;
-  const outerR = MORPH.outerR * k;
-  const lineGap = (innerR + outerR / 2) / 2;
-  const ringCy = cy - lineGap;
-  const lineY = { dot: ringCy, inner: ringCy + lineGap, outer: ringCy + 2 * lineGap };
-  const bottomY = { dot: ringCy, inner: ringCy + innerR, outer: ringCy + outerR };
-  const labelY = { dot: ringCy, inner: ringCy - innerR, outer: ringCy - outerR };
+  // ---- One text size for everything except the closing title ----
+  const textFont = isWide ? 52 : 44;
+  // ---- Stack: middle line on the screen centre, rings centred on the screen ----
+  const lineGap = textFont * 2.6;
+  const lineY = { dot: cy - lineGap, inner: cy, outer: cy + lineGap };
+  const labelY = { dot: cy, inner: cy - MORPH.innerR * k, outer: cy - MORPH.outerR * k };
 
   const iconX = lerp(cx, cx + ox, p2);
-  const iconY = lerp(ringCy, cy + oy, p2);
+  const iconY = lerp(cy, cy + oy, p2);
   const scale = lerp(ringScale, 1, p2);
   const tx = iconX - cx - ox;
   const ty = iconY - cy - oy;
 
-  // ---- One text size for everything except the closing title ----
-  const textFont = isWide ? 52 : 44;
 
   // ---- Stack in the centre, each line sitting where its ring label will be ----
   const ringIn = (at: number) => spring({ frame: frame - at, fps, config: { damping: 22, stiffness: 90, mass: 0.9 } });
-  // The ring grows while its line is still fading, so the two read as one movement
-  const parts = { dot: ringIn(t.rings[0] + 3), inner: ringIn(t.rings[1] + 3), outer: ringIn(t.rings[2] + 3) };
+  const parts = { dot: ringIn(t.rings[0]), inner: ringIn(t.rings[1]), outer: ringIn(t.rings[2]) };
   const labelsOut = interpolate(frame, [t.labelsOut, t.labelsOut + 12], [1, 0], clamp);
 
   // ---- Morph, logo, title ----
@@ -195,15 +190,14 @@ export const SiteIntro: React.FC = () => {
         </AbsoluteFill>
       ) : null}
 
-      {/* 1. The stack: lines typed in one by one, top to bottom; each fades where it stands while its ring grows */}
+      {/* 1. The stack: lines typed in one by one, top to bottom; each then travels to its ring name as the ring grows */}
       {INTRO_HOOK.map((item, i) => {
         if (frame < t.stackIn[i] || frame > t.labelsOut + 14) return null;
-        const become = interpolate(frame, [t.rings[i], t.rings[i] + t.becomeFrames], [0, 1], { ...clamp, easing: ease });
-        // A few pixels of settling onto the ring's bottom edge, too small to read as motion
-        const y = lerp(lineY[item.key], bottomY[item.key], Math.min(1, become * 2));
-        const lineOpacity = interpolate(become, [0, 0.55], [1, 0], clamp);
-        const lineScale = lerp(1, 0.9, Math.min(1, become * 1.8));
-        const labelIn = interpolate(become, [0.55, 1], [0, 1], clamp);
+        const travel = interpolate(frame, [t.travel[i], t.travel[i] + t.travelFrames], [0, 1], { ...clamp, easing: ease });
+        const y = lerp(lineY[item.key], labelY[item.key], travel);
+        const lineOpacity = interpolate(travel, [0.45, 0.95], [1, 0], clamp);
+        const lineScale = lerp(1, 0.55, travel);
+        const labelIn = interpolate(travel, [0.7, 1], [0, 1], clamp);
         const onDot = item.key === "dot";
         return (
           <div key={item.key}>
