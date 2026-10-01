@@ -44,7 +44,8 @@ export const SiteTagline: React.FC = () => {
   const cy = height / 2;
 
   const textFont = isWide ? 52 : 44;
-  const textWidth = isWide ? 1300 : width - 150;
+  // Narrow enough that both sentences break into two balanced lines in portrait
+  const textWidth = isWide ? 1300 : 720;
   const logoW = isWide ? 820 : Math.min(width - 160, 760);
 
   // Opening logo: a soft scale in, then a quick fade out
