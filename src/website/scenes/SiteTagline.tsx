@@ -44,8 +44,9 @@ export const SiteTagline: React.FC = () => {
   const cy = height / 2;
 
   const textFont = isWide ? 52 : 44;
-  // Narrow enough that both sentences break into two balanced lines in portrait
-  const textWidth = isWide ? 1300 : 720;
+  // Narrow enough that each sentence breaks into two balanced lines in portrait
+  const whoWidth = isWide ? 1300 : 720;
+  const promiseWidth = isWide ? 1300 : 620;
   const logoW = isWide ? 820 : Math.min(width - 160, 760);
 
   // Opening logo: a soft scale in, then a quick fade out
@@ -83,14 +84,14 @@ export const SiteTagline: React.FC = () => {
       {/* 2. Who we are */}
       {frame >= t.who.in && frame <= t.who.out + 10 ? (
         <div style={{ ...centred, transform: `translateY(calc(-50% + ${who.lift}px))`, opacity: who.opacity }}>
-          <Typed text={TAGLINE_TEXT.who} start={t.who.in} charsPerFrame={1.8} size={textFont} maxWidth={textWidth} />
+          <Typed text={TAGLINE_TEXT.who} start={t.who.in} charsPerFrame={1.8} size={textFont} maxWidth={whoWidth} />
         </div>
       ) : null}
 
       {/* 3. The promise */}
       {frame >= t.promise.in && frame <= t.promise.out + 10 ? (
         <div style={{ ...centred, transform: `translateY(calc(-50% + ${promise.lift}px))`, opacity: promise.opacity }}>
-          <Typed text={TAGLINE_TEXT.promise} start={t.promise.in} charsPerFrame={1.8} size={textFont} maxWidth={textWidth} />
+          <Typed text={TAGLINE_TEXT.promise} start={t.promise.in} charsPerFrame={1.8} size={textFont} maxWidth={promiseWidth} />
         </div>
       ) : null}
 
