@@ -60,19 +60,34 @@ const clamp = { extrapolateLeft: "clamp" as const, extrapolateRight: "clamp" as 
 const ease = Easing.inOut(Easing.cubic);
 const lerp = (a: number, b: number, p: number) => a + (b - a) * p;
 
-/** Text typed in character by character, no caret. Untyped characters are laid out but hidden. */
-const Typed: React.FC<{ text: string; start: number; charsPerFrame?: number; size: number; weight?: number; color?: string }> = ({
-  text,
-  start,
-  charsPerFrame = 1.3,
-  size,
-  weight = 900,
-  color = COLORS.teal,
-}) => {
+/**
+ * Text typed in character by character, no caret. Untyped characters are laid out but hidden,
+ * so line breaks never jump. With maxWidth the text wraps and is centred.
+ */
+export const Typed: React.FC<{
+  text: string;
+  start: number;
+  charsPerFrame?: number;
+  size: number;
+  weight?: number;
+  color?: string;
+  maxWidth?: number;
+}> = ({ text, start, charsPerFrame = 1.3, size, weight = 900, color = COLORS.teal, maxWidth }) => {
   const frame = useCurrentFrame();
   const shown = frame < start ? 0 : Math.min(text.length, Math.floor((frame - start) * charsPerFrame));
   return (
-    <div style={{ fontFamily, fontWeight: weight, fontSize: size, lineHeight: 1.2, color, whiteSpace: "nowrap" }}>
+    <div
+      style={{
+        fontFamily,
+        fontWeight: weight,
+        fontSize: size,
+        lineHeight: 1.2,
+        color,
+        whiteSpace: maxWidth === undefined ? "nowrap" : "normal",
+        maxWidth,
+        textAlign: "center",
+      }}
+    >
       {Array.from(text).map((ch, i) => (
         <span key={i} style={{ visibility: i < shown ? "visible" : "hidden" }}>
           {ch}

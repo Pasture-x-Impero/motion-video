@@ -3,6 +3,7 @@ import { FPS, TOTAL_FRAMES } from "./brand";
 import { ImperoVideo } from "./ImperoVideo";
 import { ImperoWebsiteVideo, SITE_TOTAL_FRAMES } from "./website/ImperoWebsiteVideo";
 import { INTRO_TIMING, SiteIntro } from "./website/scenes/SiteIntro";
+import { SiteTagline, TAGLINE_TIMING } from "./website/scenes/SiteTagline";
 
 export const RemotionRoot: React.FC = () => {
   return (
@@ -55,6 +56,23 @@ export const RemotionRoot: React.FC = () => {
         id="ImperoIntroWide"
         component={SiteIntro}
         durationInFrames={INTRO_TIMING.duration}
+        fps={FPS}
+        width={1920}
+        height={1080}
+      />
+      {/* Follow up to the intro: logo, who we are, the promise, logo with impero.no */}
+      <Composition
+        id="ImperoTaglineSocial"
+        component={SiteTagline}
+        durationInFrames={TAGLINE_TIMING.duration}
+        fps={FPS}
+        width={1080}
+        height={1350}
+      />
+      <Composition
+        id="ImperoTaglineWide"
+        component={SiteTagline}
+        durationInFrames={TAGLINE_TIMING.duration}
         fps={FPS}
         width={1920}
         height={1080}
